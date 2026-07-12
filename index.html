@@ -22,21 +22,30 @@
         .input-group { margin-bottom: 15px; text-align: left; }
         .input-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
         .input-group input, .input-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        
         .btn { width: 100%; padding: 10px; background: #0b5394; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px;}
         .btn:hover { background: #083c6b; }
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #218838; }
+        .btn-info { background: #17a2b8; }
+        .btn-info:hover { background: #138496; }
+        .btn-secondary { background: #6c757d; font-size: 14px; margin-top: 15px;}
+        .btn-secondary:hover { background: #5a6268; }
         .btn-danger { background: #dc3545; }
         .btn-danger:hover { background: #c82333; }
         .logout-btn { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; float: right; margin: 5px; }
+        .admin-nav-btn { background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; float: left; margin: 5px; font-weight: bold; }
         
         .user-list { text-align: left; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px; }
         .user-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #f9f9f9; border-bottom: 1px solid #ddd; margin-bottom: 5px;}
-        .user-item button { padding: 4px 8px; font-size: 12px; }
+        .user-item button { padding: 4px 8px; font-size: 12px; margin-left: 5px; width: auto;}
+        .user-actions { display: flex; }
 
         /* --- DASHBOARD STYLES (Hidden by default) --- */
         #appView { display: none; }
         
         .dashboard-container { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow-x: auto; -webkit-overflow-scrolling: touch; position: relative; }
-        .controls-container { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .controls-container { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; clear: both; padding-top: 40px;}
         select.date-select { padding: 8px 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; background: #fff; cursor: pointer; font-weight: bold; color: #0b5394; }
         .header-title { background-color: #0b5394; color: white; text-align: center; padding: 8px; font-size: 20px; font-weight: bold; border: 1px solid #ccc; margin-bottom: 10px; clear: both;}
         
@@ -64,6 +73,8 @@
 
         .custom-cb { appearance: none; width: 16px; height: 16px; border: 2px solid; border-radius: 2px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; background: white; margin: 0; vertical-align: middle; }
         .custom-cb:checked::after { content: '✓'; color: white; font-size: 12px; font-weight: bold; }
+        .custom-cb:disabled { opacity: 0.5; cursor: not-allowed; }
+        
         .cb-w1 { border-color: #b45f06; } .cb-w1:checked { background: #b45f06; }
         .cb-w2 { border-color: #0b5394; } .cb-w2:checked { background: #0b5394; }
         .cb-w3 { border-color: #990000; } .cb-w3:checked { background: #990000; }
@@ -109,12 +120,53 @@
         <input type="password" id="passwordInput" placeholder="Enter password">
     </div>
     <button class="btn" onclick="attemptLogin()">Log In</button>
+    <button class="btn btn-secondary" onclick="forgotPassword()">Forgot Password?</button>
 </div>
 
 <div id="adminView" class="admin-container" style="display:none;">
     <button class="logout-btn" onclick="logout()">Logout</button>
     <h2>Admin Control Panel</h2>
     
+    <div style="background:#e9ecef; padding:15px; border-radius:4px; margin-bottom:20px; text-align:left;">
+        <h4 style="margin-top:0; text-align:center; color:#0b5394;">Download User Reports (CSV)</h4>
+        
+        <div class="input-group">
+            <label>1. Select User</label>
+            <select id="dlUserSelect"></select>
+        </div>
+        
+        <hr style="border-top:1px solid #ccc; margin:15px 0;">
+        
+        <h5 style="margin:0 0 10px 0; color:#333;">Option A: Monthly Overview</h5>
+        <div style="display:flex; gap:10px;">
+            <div class="input-group" style="flex:1;">
+                <label>Month</label>
+                <select id="dlMonthSelect"></select>
+            </div>
+            <div class="input-group" style="flex:1;">
+                <label>Year</label>
+                <select id="dlYearSelect"></select>
+            </div>
+        </div>
+        <button class="btn btn-success" onclick="downloadMonthlyReport()">Download Monthly CSV</button>
+
+        <hr style="border-top:1px solid #ccc; margin:15px 0;">
+
+        <h5 style="margin:0 0 10px 0; color:#333;">Option B: Date Range Tracker</h5>
+        <div style="display:flex; gap:10px;">
+            <div class="input-group" style="flex:1;">
+                <label>From Date</label>
+                <input type="date" id="dlFromDate">
+            </div>
+            <div class="input-group" style="flex:1;">
+                <label>To Date</label>
+                <input type="date" id="dlToDate">
+            </div>
+        </div>
+        <button class="btn btn-info" onclick="downloadDateRangeReport()">Download Date Range CSV</button>
+
+    </div>
+
     <div style="background:#f4f4f4; padding:15px; border-radius:4px; margin-bottom:20px;">
         <h4 style="margin-top:0;">Create New User</h4>
         <div class="input-group">
@@ -128,18 +180,21 @@
 
     <h4>Current Users</h4>
     <div id="userList" class="user-list">
-        </div>
+    </div>
 </div>
 
 <div id="appView">
     <div class="dashboard-container">
+        <button id="backToAdminBtn" class="admin-nav-btn" style="display:none;" onclick="routeUser()">← Back to Admin</button>
         <button class="logout-btn" onclick="logout()">Logout</button>
+        
         <div class="controls-container">
+            <select id="userSelect" class="date-select"></select>
             <select id="monthSelect" class="date-select"></select>
             <select id="yearSelect" class="date-select"></select>
         </div>
 
-        <div class="header-title" id="mainHeader">(Month) (Year) Habit Tracker</div>
+        <div class="header-title" id="mainHeader">(User) - (Month) (Year) Habit Tracker</div>
 
         <table id="trackerTable">
             <thead id="tableHead"></thead>
@@ -157,6 +212,13 @@
         { username: 'user2', password: '123', role: 'user' }
     ];
     let currentUser = null;
+    let viewingUsername = null; 
+
+    // Global Date Variables
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    let today = new Date();
+    let selectedYear = today.getFullYear();
+    let selectedMonth = today.getMonth(); 
 
     function saveUsers() {
         localStorage.setItem('ht_users', JSON.stringify(users));
@@ -189,20 +251,37 @@
 
     function logout() {
         currentUser = null;
+        viewingUsername = null;
         sessionStorage.removeItem('ht_session');
         document.getElementById('usernameInput').value = '';
         document.getElementById('passwordInput').value = '';
         showView('loginView');
     }
 
+    function forgotPassword() {
+        const username = prompt("Enter your username to reset your password:");
+        if (username) {
+            const user = users.find(u => u.username === username.trim());
+            if (user) {
+                user.password = '12345';
+                saveUsers();
+                alert(`Password for ${user.username} has been reset to "12345". Please login.`);
+            } else {
+                alert("Username not found.");
+            }
+        }
+    }
+
     function routeUser() {
         if (currentUser.role === 'admin') {
             showView('adminView');
             renderUserList();
+            initAdminControls(); // Initialize dropdowns for the report downloader
         } else {
+            viewingUsername = currentUser.username; 
             showView('appView');
             initControls();
-            loadUserData(); // Load specific user's saved checkboxes
+            loadUserData();
             renderDashboard();
         }
     }
@@ -212,6 +291,8 @@
         document.getElementById('adminView').style.display = 'none';
         document.getElementById('appView').style.display = 'none';
         document.getElementById(viewId).style.display = 'block';
+        
+        document.getElementById('backToAdminBtn').style.display = 'none';
     }
 
     // --- ADMIN LOGIC ---
@@ -219,11 +300,14 @@
         const list = document.getElementById('userList');
         list.innerHTML = '';
         users.forEach(u => {
-            if (u.role === 'admin') return; // Don't delete admin
+            if (u.role === 'admin') return;
             list.innerHTML += `
                 <div class="user-item">
                     <span><strong>${u.username}</strong> (Pass: ${u.password})</span>
-                    <button class="btn-danger" onclick="deleteUser('${u.username}')">Delete</button>
+                    <div class="user-actions">
+                        <button class="btn" style="background:#0b5394; color:white; margin-top:0;" onclick="viewUserDash('${u.username}')">View</button>
+                        <button class="btn-danger" style="margin-top:0;" onclick="deleteUser('${u.username}')">Delete</button>
+                    </div>
                 </div>
             `;
         });
@@ -240,6 +324,7 @@
         document.getElementById('newUsername').value = '';
         document.getElementById('newPassword').value = '';
         renderUserList();
+        initAdminControls(); // Refresh user list in the download dropdown
     }
 
     function deleteUser(username) {
@@ -247,7 +332,173 @@
             users = users.filter(u => u.username !== username);
             saveUsers();
             renderUserList();
+            initAdminControls(); 
         }
+    }
+
+    function viewUserDash(targetUsername) {
+        viewingUsername = targetUsername;
+        showView('appView');
+        document.getElementById('backToAdminBtn').style.display = 'inline-block';
+        initControls();
+        loadUserData();
+        renderDashboard();
+    }
+
+    // --- REPORT DOWNLOADER LOGIC ---
+    function initAdminControls() {
+        const dlUserSelect = document.getElementById('dlUserSelect');
+        const dlMonthSelect = document.getElementById('dlMonthSelect');
+        const dlYearSelect = document.getElementById('dlYearSelect');
+        
+        // Setup User Dropdown
+        dlUserSelect.innerHTML = '<option value="all">-- All Users --</option>';
+        users.filter(u => u.role === 'user').forEach(u => {
+            let opt = document.createElement('option'); 
+            opt.value = u.username; opt.innerText = u.username;
+            dlUserSelect.appendChild(opt);
+        });
+
+        // Setup Month/Year Dropdowns
+        dlMonthSelect.innerHTML = ''; 
+        monthNames.forEach((m, index) => {
+            let opt = document.createElement('option'); 
+            opt.value = index; opt.innerText = m;
+            dlMonthSelect.appendChild(opt);
+        });
+
+        dlYearSelect.innerHTML = '';
+        for (let y = 2024; y <= 2030; y++) {
+            let opt = document.createElement('option'); 
+            opt.value = y; opt.innerText = y;
+            dlYearSelect.appendChild(opt);
+        }
+
+        dlMonthSelect.value = selectedMonth;
+        dlYearSelect.value = selectedYear;
+
+        // Set default To Date (Today)
+        const localDate = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        document.getElementById('dlToDate').value = localDate;
+        
+        // Set default From Date (7 days ago)
+        let weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const fromLocalDate = new Date(weekAgo.getTime() - (weekAgo.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        document.getElementById('dlFromDate').value = fromLocalDate;
+    }
+
+    function downloadMonthlyReport() {
+        const u = document.getElementById('dlUserSelect').value;
+        const m = parseInt(document.getElementById('dlMonthSelect').value);
+        const y = parseInt(document.getElementById('dlYearSelect').value);
+
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "Username,Month,Year,Habit Name,Total Monthly Goal,Days Completed,Progress %\n";
+
+        const daysInReqMonth = new Date(y, m + 1, 0).getDate();
+        let workingDaysInReqMonth = 0;
+        for(let d = 1; d <= daysInReqMonth; d++) {
+            if(new Date(y, m, d).getDay() !== 6) workingDaysInReqMonth++;
+        }
+
+        const usersToDownload = u === 'all' ? users.filter(x => x.role === 'user') : [users.find(x => x.username === u)];
+
+        usersToDownload.forEach(userObj => {
+            if(!userObj) return;
+            const storageKey = `ht_data_${userObj.username}_${y}_${m}`;
+            const savedData = JSON.parse(localStorage.getItem(storageKey)) || {};
+
+            habits.forEach(habit => {
+                const checkedDaysArray = savedData[habit.id] || [];
+                const validCheckedDays = checkedDaysArray.filter(day => new Date(y, m, day).getDay() !== 6).length;
+                const monthlyGoal = habit.dailyTarget * workingDaysInReqMonth;
+                const percentage = workingDaysInReqMonth > 0 ? ((validCheckedDays / workingDaysInReqMonth) * 100).toFixed(2) : 0;
+
+                csvContent += `${userObj.username},${monthNames[m]},${y},"${habit.name}",${monthlyGoal},${validCheckedDays},${percentage}%\n`;
+            });
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        const filenameLabel = u === 'all' ? 'All_Users' : u;
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `MonthlyReport_${filenameLabel}_${monthNames[m]}_${y}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function downloadDateRangeReport() {
+        const u = document.getElementById('dlUserSelect').value;
+        const fromDateVal = document.getElementById('dlFromDate').value;
+        const toDateVal = document.getElementById('dlToDate').value;
+        
+        if (!fromDateVal || !toDateVal) {
+            alert("Please select both a From Date and a To Date.");
+            return;
+        }
+
+        // Parse dates safely to avoid timezone issues
+        const fParts = fromDateVal.split('-');
+        const tParts = toDateVal.split('-');
+        const startDate = new Date(fParts[0], fParts[1] - 1, fParts[2]);
+        const endDate = new Date(tParts[0], tParts[1] - 1, tParts[2]);
+
+        if (startDate > endDate) {
+            alert("The 'From Date' cannot be later than the 'To Date'.");
+            return;
+        }
+
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "Username,Date,Habit Name,Status\n";
+
+        const usersToDownload = u === 'all' ? users.filter(x => x.role === 'user') : [users.find(x => x.username === u)];
+
+        usersToDownload.forEach(userObj => {
+            if(!userObj) return;
+
+            let currentDate = new Date(startDate.getTime());
+            
+            // Loop through each day in the date range
+            while(currentDate <= endDate) {
+                let y = currentDate.getFullYear();
+                let m = currentDate.getMonth();
+                let d = currentDate.getDate();
+                let dayOfWeek = currentDate.getDay();
+                
+                // Format date string for the CSV output (YYYY-MM-DD)
+                let dateString = `${y}-${String(m+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+                // Fetch data for whatever month/year we are currently iterating over
+                const storageKey = `ht_data_${userObj.username}_${y}_${m}`;
+                const savedData = JSON.parse(localStorage.getItem(storageKey)) || {};
+
+                habits.forEach(habit => {
+                    let statusText = "";
+                    if (dayOfWeek === 6) {
+                        statusText = "OFF (Saturday)";
+                    } else {
+                        const checkedDaysArray = savedData[habit.id] || [];
+                        const isCompleted = checkedDaysArray.includes(d);
+                        statusText = isCompleted ? "Completed" : "Incomplete";
+                    }
+                    csvContent += `${userObj.username},${dateString},"${habit.name}",${statusText}\n`;
+                });
+
+                // Move to the next day
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        const filenameLabel = u === 'all' ? 'All_Users' : u;
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `DateRangeReport_${filenameLabel}_${fromDateVal}_to_${toDateVal}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
     // --- TRACKER LOGIC ---
@@ -258,17 +509,15 @@
         { id: 4, name: "Daily Data Update", dailyTarget: 1 }
     ];
 
-    let userHabitData = {}; // Stores the checked days for the logged-in user
+    let userHabitData = {}; 
 
     function loadUserData() {
-        // Look for data specific to the logged in user + selected month/year
-        const storageKey = `ht_data_${currentUser.username}_${selectedYear}_${selectedMonth}`;
+        const storageKey = `ht_data_${viewingUsername}_${selectedYear}_${selectedMonth}`;
         const saved = localStorage.getItem(storageKey);
         
         if (saved) {
             userHabitData = JSON.parse(saved);
         } else {
-            // Default blank state if they haven't saved anything this month
             userHabitData = { 1: [], 2: [], 3: [], 4: [] };
         }
     }
@@ -282,33 +531,37 @@
             userHabitData[habitId] = userHabitData[habitId].filter(d => d !== day);
         }
 
-        // Save to browser based on the specific user and month
-        const storageKey = `ht_data_${currentUser.username}_${selectedYear}_${selectedMonth}`;
+        const storageKey = `ht_data_${viewingUsername}_${selectedYear}_${selectedMonth}`;
         localStorage.setItem(storageKey, JSON.stringify(userHabitData));
         
-        calculate(); // Recalculate dashboard metrics
+        calculate(); 
     }
 
-    // Existing UI variables
-    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const baseColors = ['#b45f06', '#0b5394', '#990000', '#38761d', '#741b47'];
     let chartInstances = {};
     let currentWeeks = [];
     let daysInMonth = 31;
-    
-    // Set to current real-world date initially
-    let today = new Date();
-    let selectedYear = today.getFullYear();
-    let selectedMonth = today.getMonth(); 
 
     function isSaturday(day) {
         return new Date(selectedYear, selectedMonth, day).getDay() === 6;
     }
 
     function initControls() {
+        const uSelect = document.getElementById('userSelect');
         const mSelect = document.getElementById('monthSelect');
         const ySelect = document.getElementById('yearSelect');
-        mSelect.innerHTML = ''; ySelect.innerHTML = '';
+        
+        uSelect.innerHTML = '';
+        mSelect.innerHTML = ''; 
+        ySelect.innerHTML = '';
+
+        users.filter(u => u.role === 'user').forEach(u => {
+            let opt = document.createElement('option'); 
+            opt.value = u.username; 
+            opt.innerText = u.username.toUpperCase() + "'s Tracker";
+            uSelect.appendChild(opt);
+        });
+        uSelect.value = viewingUsername;
 
         monthNames.forEach((m, index) => {
             let opt = document.createElement('option'); opt.value = index; opt.innerText = m;
@@ -322,16 +575,23 @@
         mSelect.value = selectedMonth;
         ySelect.value = selectedYear;
 
-        mSelect.addEventListener('change', (e) => { 
+        uSelect.onchange = (e) => {
+            viewingUsername = e.target.value;
+            loadUserData();
+            renderDashboard();
+        };
+
+        mSelect.onchange = (e) => { 
             selectedMonth = parseInt(e.target.value); 
-            loadUserData(); // Reload data when month changes
+            loadUserData(); 
             renderDashboard(); 
-        });
-        ySelect.addEventListener('change', (e) => { 
+        };
+
+        ySelect.onchange = (e) => { 
             selectedYear = parseInt(e.target.value); 
-            loadUserData(); // Reload data when year changes
+            loadUserData(); 
             renderDashboard(); 
-        });
+        };
     }
 
     function calculateDynamicWeeks() {
@@ -354,7 +614,7 @@
     }
 
     function renderDashboard() {
-        document.getElementById('mainHeader').innerText = `${currentUser.username.toUpperCase()}'s Tracker - ${monthNames[selectedMonth]} ${selectedYear}`;
+        document.getElementById('mainHeader').innerText = `${viewingUsername.toUpperCase()}'s Tracker - ${monthNames[selectedMonth]} ${selectedYear}`;
         calculateDynamicWeeks();
         
         Object.values(chartInstances).forEach(chart => chart.destroy());
@@ -394,6 +654,8 @@
         const tbody = document.getElementById('trackerBody');
         tbody.innerHTML = '';
 
+        const isReadonly = (currentUser.role !== 'admin' && currentUser.username !== viewingUsername) ? 'disabled' : '';
+
         habits.forEach(habit => {
             let tr = `<tr><td class="habit-name">${habit.name}</td>`;
             let dayCount = 1;
@@ -403,10 +665,9 @@
                     if (isSaturday(dayCount)) {
                         tr += `<td class="${week.bgClass} off-day">OFF</td>`;
                     } else {
-                        // Check local user data instead of hardcoded data
                         const isChecked = (userHabitData[habit.id] && userHabitData[habit.id].includes(dayCount)) ? 'checked' : '';
                         tr += `<td class="${week.bgClass}">
-                            <input type="checkbox" class="custom-cb ${week.cbClass}" data-day="${dayCount}" data-week="${week.name}" data-habit="${habit.id}" ${isChecked} onchange="saveTrackerState(${habit.id}, ${dayCount}, this.checked)">
+                            <input type="checkbox" class="custom-cb ${week.cbClass}" data-day="${dayCount}" data-week="${week.name}" data-habit="${habit.id}" ${isChecked} ${isReadonly} onchange="saveTrackerState(${habit.id}, ${dayCount}, this.checked)">
                         </td>`;
                     }
                     dayCount++;
@@ -511,7 +772,6 @@
         });
     }
 
-    // Initialize application check
     window.onload = checkSession;
 </script>
 
