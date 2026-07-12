@@ -154,7 +154,6 @@
 <!-- ADMIN VIEW -->
 <div id="adminView" class="admin-container">
     <button class="logout-btn" onclick="logout()">Logout</button>
-    <!-- NEW: Change Password Button for Admin -->
     <button class="change-pass-btn" onclick="changePassword()">Change Password</button>
     
     <h2 style="clear:both; padding-top: 10px;">Admin Control Panel</h2>
@@ -220,7 +219,6 @@
         <button id="backToAdminBtn" class="admin-nav-btn" style="display:none;" onclick="routeUser()">← Back to Admin</button>
         
         <button class="logout-btn" onclick="logout()">Logout</button>
-        <!-- NEW: Change Password Button for Users -->
         <button class="change-pass-btn" onclick="changePassword()">Change Password</button>
         
         <div class="controls-container">
@@ -242,31 +240,24 @@
 <script>
     // --- AUTHENTICATION & MULTI-USER LOGIC ---
     let users = JSON.parse(localStorage.getItem('ht_users')) || [
-        // Admin Default Setup
         { username: 'admin', password: '123', role: 'admin', secQuestion: "What is your favorite color?", secAnswer: "blue" },
-        // Dummy Users
         { username: 'user1', password: '123', role: 'user', secQuestion: "What is your favorite color?", secAnswer: "blue" },
         { username: 'user2', password: '123', role: 'user', secQuestion: "What is the name of your first pet?", secAnswer: "buddy" }
     ];
     let currentUser = null;
     let viewingUsername = null; 
 
-    // Global Date Variables
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     let today = new Date();
     let selectedYear = today.getFullYear();
     let selectedMonth = today.getMonth(); 
 
     function handleLoginKeyPress(event) {
-        if (event.key === 'Enter') {
-            attemptLogin();
-        }
+        if (event.key === 'Enter') attemptLogin();
     }
 
     function handleSetupKeyPress(event) {
-        if (event.key === 'Enter') {
-            saveSecuritySetup();
-        }
+        if (event.key === 'Enter') saveSecuritySetup();
     }
 
     function saveUsers() {
@@ -284,9 +275,11 @@
     }
 
     function attemptLogin() {
-        const u = document.getElementById('usernameInput').value.trim();
+        const u = document.getElementById('usernameInput').value.trim().toLowerCase();
         const p = document.getElementById('passwordInput').value.trim();
-        const found = users.find(user => user.username === u && user.password === p);
+        
+        // Compare both the input and the stored username in lowercase
+        const found = users.find(user => user.username.toLowerCase() === u && user.password === p);
 
         if (found) {
             currentUser = found;
@@ -298,7 +291,6 @@
         }
     }
     
-    // Check if ANY user (including admin) needs to set up a security question
     function checkUserSecurityStatus() {
         if (!currentUser.secQuestion) {
             showView('setupSecurityView');
@@ -307,7 +299,6 @@
         }
     }
 
-    // Function to save chosen question & answer for both Users and Admins
     function saveSecuritySetup() {
         const sq = document.getElementById('userSetupQuestion').value;
         const sa = document.getElementById('userSetupAnswer').value.trim();
@@ -315,18 +306,15 @@
         if (!sq) return alert("Please choose a security question from the dropdown.");
         if (!sa) return alert("Please type an answer to your security question.");
         
-        // Save to currentUser and storage
         currentUser.secQuestion = sq;
-        currentUser.secAnswer = sa.toLowerCase(); // Lowercase to make comparisons easier
+        currentUser.secAnswer = sa.toLowerCase(); 
         
-        // Update the user in the users array
         const userIndex = users.findIndex(u => u.username === currentUser.username);
         if (userIndex !== -1) {
             users[userIndex] = currentUser;
             saveUsers();
         }
         
-        // Continue to their respective dashboard
         routeUser();
     }
 
@@ -339,10 +327,9 @@
         showView('loginView');
     }
 
-    // NEW: Function allowing a logged-in user or admin to safely change their password
     function changePassword() {
         const current = prompt("Enter your current password:");
-        if (current === null) return; // User pressed Cancel
+        if (current === null) return; 
         
         if (current !== currentUser.password) {
             alert("Incorrect current password. Password change failed.");
@@ -364,7 +351,6 @@
             return;
         }
 
-        // Apply change
         currentUser.password = newPass.trim();
         const userIndex = users.findIndex(u => u.username === currentUser.username);
         if (userIndex !== -1) {
@@ -374,11 +360,12 @@
         }
     }
 
-    // "Forgot Password" now works for ANY user in the system (Admins and Users)
     function forgotPassword() {
         const username = prompt("Enter your username to reset your password:");
         if (username) {
-            const user = users.find(u => u.username === username.trim());
+            const searchUser = username.trim().toLowerCase();
+            const user = users.find(u => u.username.toLowerCase() === searchUser);
+            
             if (user) {
                 if (!user.secQuestion) {
                     alert("This account has not set up a security question yet. Please contact the administrator.");
@@ -465,11 +452,14 @@
     }
 
     function createUser() {
-        const u = document.getElementById('newUsername').value.trim();
+        // Automatically convert the new username to lowercase for storage
+        const u = document.getElementById('newUsername').value.trim().toLowerCase();
         const p = document.getElementById('newPassword').value.trim();
         
         if(!u || !p) return alert("Enter username and password");
-        if(users.find(x => x.username === u)) return alert("User already exists!");
+        
+        // Case-insensitive duplicate check
+        if(users.find(x => x.username.toLowerCase() === u)) return alert("User already exists!");
         
         users.push({ 
             username: u, 
