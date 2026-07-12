@@ -27,7 +27,7 @@
         .btn:hover { background: #083c6b; }
         .btn-success { background: #28a745; }
         .btn-success:hover { background: #218838; }
-        .btn-info { background: #17a2b8; }
+        .btn-info { background: #17a2b8; color: white; border: none;}
         .btn-info:hover { background: #138496; }
         .btn-secondary { background: #6c757d; font-size: 14px; margin-top: 15px;}
         .btn-secondary:hover { background: #5a6268; }
@@ -35,6 +35,8 @@
         .btn-danger:hover { background: #c82333; }
         .logout-btn { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; float: right; margin: 5px; }
         .admin-nav-btn { background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; float: left; margin: 5px; font-weight: bold; }
+        .change-pass-btn { background: #17a2b8; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; float: right; margin: 5px; font-weight: bold; }
+        .change-pass-btn:hover { background: #138496; }
         
         .user-list { text-align: left; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px; }
         .user-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #f9f9f9; border-bottom: 1px solid #ddd; margin-bottom: 5px;}
@@ -42,7 +44,7 @@
         .user-actions { display: flex; }
 
         /* --- DASHBOARD STYLES (Hidden by default) --- */
-        #appView { display: none; }
+        #appView, #setupSecurityView { display: none; }
         
         .dashboard-container { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow-x: auto; -webkit-overflow-scrolling: touch; position: relative; }
         .controls-container { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; clear: both; padding-top: 40px;}
@@ -108,24 +110,54 @@
 </head>
 <body>
 
+<!-- LOGIN VIEW -->
 <div id="loginView" class="auth-container">
     <h2>System Login</h2>
     <div id="loginError" style="color:red; font-size:12px; margin-bottom:10px;"></div>
+    
     <div class="input-group">
         <label>Username</label>
-        <input type="text" id="usernameInput" placeholder="Enter username">
+        <input type="text" id="usernameInput" placeholder="Enter username" onkeypress="handleLoginKeyPress(event)">
     </div>
     <div class="input-group">
         <label>Password</label>
-        <input type="password" id="passwordInput" placeholder="Enter password">
+        <input type="password" id="passwordInput" placeholder="Enter password" onkeypress="handleLoginKeyPress(event)">
     </div>
+    
     <button class="btn" onclick="attemptLogin()">Log In</button>
     <button class="btn btn-secondary" onclick="forgotPassword()">Forgot Password?</button>
 </div>
 
-<div id="adminView" class="admin-container" style="display:none;">
+<!-- USER SECURITY SETUP VIEW -->
+<div id="setupSecurityView" class="auth-container">
+    <h2>Account Setup</h2>
+    <p style="font-size: 14px; color: #555; margin-bottom: 20px;">Welcome! Since this is your first time logging in, please set up a security question. You will use this if you ever forget your password.</p>
+    
+    <div class="input-group">
+        <label>Choose a Security Question:</label>
+        <select id="userSetupQuestion">
+            <option value="">-- Select a Question --</option>
+            <option value="What is your favorite color?">What is your favorite color?</option>
+            <option value="What city were you born in?">What city were you born in?</option>
+            <option value="What is the name of your first pet?">What is the name of your first pet?</option>
+            <option value="What is your favorite food?">What is your favorite food?</option>
+            <option value="What was the name of your first school?">What was the name of your first school?</option>
+        </select>
+    </div>
+    <div class="input-group">
+        <label>Your Answer:</label>
+        <input type="text" id="userSetupAnswer" placeholder="Type your answer here" onkeypress="handleSetupKeyPress(event)">
+    </div>
+    <button class="btn" onclick="saveSecuritySetup()">Save & Continue to Dashboard</button>
+</div>
+
+<!-- ADMIN VIEW -->
+<div id="adminView" class="admin-container">
     <button class="logout-btn" onclick="logout()">Logout</button>
-    <h2>Admin Control Panel</h2>
+    <!-- NEW: Change Password Button for Admin -->
+    <button class="change-pass-btn" onclick="changePassword()">Change Password</button>
+    
+    <h2 style="clear:both; padding-top: 10px;">Admin Control Panel</h2>
     
     <div style="background:#e9ecef; padding:15px; border-radius:4px; margin-bottom:20px; text-align:left;">
         <h4 style="margin-top:0; text-align:center; color:#0b5394;">Download User Reports (CSV)</h4>
@@ -164,7 +196,6 @@
             </div>
         </div>
         <button class="btn btn-info" onclick="downloadDateRangeReport()">Download Date Range CSV</button>
-
     </div>
 
     <div style="background:#f4f4f4; padding:15px; border-radius:4px; margin-bottom:20px;">
@@ -183,10 +214,14 @@
     </div>
 </div>
 
+<!-- DASHBOARD VIEW -->
 <div id="appView">
     <div class="dashboard-container">
         <button id="backToAdminBtn" class="admin-nav-btn" style="display:none;" onclick="routeUser()">← Back to Admin</button>
+        
         <button class="logout-btn" onclick="logout()">Logout</button>
+        <!-- NEW: Change Password Button for Users -->
+        <button class="change-pass-btn" onclick="changePassword()">Change Password</button>
         
         <div class="controls-container">
             <select id="userSelect" class="date-select"></select>
@@ -207,9 +242,11 @@
 <script>
     // --- AUTHENTICATION & MULTI-USER LOGIC ---
     let users = JSON.parse(localStorage.getItem('ht_users')) || [
-        { username: 'admin', password: '123', role: 'admin' },
-        { username: 'user1', password: '123', role: 'user' },
-        { username: 'user2', password: '123', role: 'user' }
+        // Admin Default Setup
+        { username: 'admin', password: '123', role: 'admin', secQuestion: "What is your favorite color?", secAnswer: "blue" },
+        // Dummy Users
+        { username: 'user1', password: '123', role: 'user', secQuestion: "What is your favorite color?", secAnswer: "blue" },
+        { username: 'user2', password: '123', role: 'user', secQuestion: "What is the name of your first pet?", secAnswer: "buddy" }
     ];
     let currentUser = null;
     let viewingUsername = null; 
@@ -220,6 +257,18 @@
     let selectedYear = today.getFullYear();
     let selectedMonth = today.getMonth(); 
 
+    function handleLoginKeyPress(event) {
+        if (event.key === 'Enter') {
+            attemptLogin();
+        }
+    }
+
+    function handleSetupKeyPress(event) {
+        if (event.key === 'Enter') {
+            saveSecuritySetup();
+        }
+    }
+
     function saveUsers() {
         localStorage.setItem('ht_users', JSON.stringify(users));
     }
@@ -228,7 +277,7 @@
         const sessionUser = sessionStorage.getItem('ht_session');
         if (sessionUser) {
             currentUser = users.find(u => u.username === sessionUser);
-            routeUser();
+            checkUserSecurityStatus();
         } else {
             showView('loginView');
         }
@@ -243,10 +292,42 @@
             currentUser = found;
             sessionStorage.setItem('ht_session', found.username);
             document.getElementById('loginError').innerText = "";
-            routeUser();
+            checkUserSecurityStatus();
         } else {
             document.getElementById('loginError').innerText = "Invalid credentials!";
         }
+    }
+    
+    // Check if ANY user (including admin) needs to set up a security question
+    function checkUserSecurityStatus() {
+        if (!currentUser.secQuestion) {
+            showView('setupSecurityView');
+        } else {
+            routeUser();
+        }
+    }
+
+    // Function to save chosen question & answer for both Users and Admins
+    function saveSecuritySetup() {
+        const sq = document.getElementById('userSetupQuestion').value;
+        const sa = document.getElementById('userSetupAnswer').value.trim();
+        
+        if (!sq) return alert("Please choose a security question from the dropdown.");
+        if (!sa) return alert("Please type an answer to your security question.");
+        
+        // Save to currentUser and storage
+        currentUser.secQuestion = sq;
+        currentUser.secAnswer = sa.toLowerCase(); // Lowercase to make comparisons easier
+        
+        // Update the user in the users array
+        const userIndex = users.findIndex(u => u.username === currentUser.username);
+        if (userIndex !== -1) {
+            users[userIndex] = currentUser;
+            saveUsers();
+        }
+        
+        // Continue to their respective dashboard
+        routeUser();
     }
 
     function logout() {
@@ -258,14 +339,66 @@
         showView('loginView');
     }
 
+    // NEW: Function allowing a logged-in user or admin to safely change their password
+    function changePassword() {
+        const current = prompt("Enter your current password:");
+        if (current === null) return; // User pressed Cancel
+        
+        if (current !== currentUser.password) {
+            alert("Incorrect current password. Password change failed.");
+            return;
+        }
+
+        const newPass = prompt("Enter your NEW password:");
+        if (newPass === null) return;
+        if (newPass.trim() === "") {
+            alert("Password cannot be empty.");
+            return;
+        }
+
+        const confirmPass = prompt("Confirm your NEW password:");
+        if (confirmPass === null) return;
+        
+        if (newPass !== confirmPass) {
+            alert("Passwords do not match. Please try again.");
+            return;
+        }
+
+        // Apply change
+        currentUser.password = newPass.trim();
+        const userIndex = users.findIndex(u => u.username === currentUser.username);
+        if (userIndex !== -1) {
+            users[userIndex] = currentUser;
+            saveUsers();
+            alert("Password successfully changed!");
+        }
+    }
+
+    // "Forgot Password" now works for ANY user in the system (Admins and Users)
     function forgotPassword() {
         const username = prompt("Enter your username to reset your password:");
         if (username) {
             const user = users.find(u => u.username === username.trim());
             if (user) {
-                user.password = '12345';
-                saveUsers();
-                alert(`Password for ${user.username} has been reset to "12345". Please login.`);
+                if (!user.secQuestion) {
+                    alert("This account has not set up a security question yet. Please contact the administrator.");
+                    return;
+                }
+                
+                const answer = prompt(`Security Question: ${user.secQuestion}\n\nEnter your answer:`);
+                
+                if (answer !== null && answer.trim().toLowerCase() === user.secAnswer) {
+                    const newPassword = prompt("Correct Answer! \n\nPlease enter your NEW password:");
+                    if (newPassword && newPassword.trim() !== "") {
+                        user.password = newPassword.trim();
+                        saveUsers();
+                        alert("Your password has been successfully updated. You can now log in.");
+                    } else {
+                        alert("Password reset cancelled (password cannot be empty).");
+                    }
+                } else {
+                    alert("Incorrect security answer! Password reset failed.");
+                }
             } else {
                 alert("Username not found.");
             }
@@ -276,7 +409,7 @@
         if (currentUser.role === 'admin') {
             showView('adminView');
             renderUserList();
-            initAdminControls(); // Initialize dropdowns for the report downloader
+            initAdminControls();
         } else {
             viewingUsername = currentUser.username; 
             showView('appView');
@@ -288,6 +421,7 @@
 
     function showView(viewId) {
         document.getElementById('loginView').style.display = 'none';
+        document.getElementById('setupSecurityView').style.display = 'none';
         document.getElementById('adminView').style.display = 'none';
         document.getElementById('appView').style.display = 'none';
         document.getElementById(viewId).style.display = 'block';
@@ -301,11 +435,15 @@
         list.innerHTML = '';
         users.forEach(u => {
             if (u.role === 'admin') return;
+            
+            const setupStatus = u.secQuestion ? '' : '<span style="color:#d9534f; font-size:11px;">(Security setup pending)</span>';
+            
             list.innerHTML += `
                 <div class="user-item">
-                    <span><strong>${u.username}</strong> (Pass: ${u.password})</span>
+                    <span><strong>${u.username}</strong> (Pass: ${u.password}) ${setupStatus}</span>
                     <div class="user-actions">
                         <button class="btn" style="background:#0b5394; color:white; margin-top:0;" onclick="viewUserDash('${u.username}')">View</button>
+                        <button class="btn-info" style="margin-top:0; color:white; margin-left:5px;" onclick="adminResetUserPassword('${u.username}')">Reset Pass</button>
                         <button class="btn-danger" style="margin-top:0;" onclick="deleteUser('${u.username}')">Delete</button>
                     </div>
                 </div>
@@ -313,18 +451,41 @@
         });
     }
 
+    function adminResetUserPassword(targetUsername) {
+        const newPass = prompt(`Admin Override: Enter a new password for user '${targetUsername}':`);
+        if (newPass && newPass.trim() !== "") {
+            const user = users.find(u => u.username === targetUsername);
+            if (user) {
+                user.password = newPass.trim();
+                saveUsers();
+                renderUserList();
+                alert(`Password for ${targetUsername} has been successfully updated.`);
+            }
+        }
+    }
+
     function createUser() {
         const u = document.getElementById('newUsername').value.trim();
         const p = document.getElementById('newPassword').value.trim();
+        
         if(!u || !p) return alert("Enter username and password");
         if(users.find(x => x.username === u)) return alert("User already exists!");
         
-        users.push({ username: u, password: p, role: 'user' });
+        users.push({ 
+            username: u, 
+            password: p, 
+            role: 'user',
+            secQuestion: null,
+            secAnswer: null
+        });
+        
         saveUsers();
+        
         document.getElementById('newUsername').value = '';
         document.getElementById('newPassword').value = '';
+        
         renderUserList();
-        initAdminControls(); // Refresh user list in the download dropdown
+        initAdminControls();
     }
 
     function deleteUser(username) {
@@ -351,7 +512,6 @@
         const dlMonthSelect = document.getElementById('dlMonthSelect');
         const dlYearSelect = document.getElementById('dlYearSelect');
         
-        // Setup User Dropdown
         dlUserSelect.innerHTML = '<option value="all">-- All Users --</option>';
         users.filter(u => u.role === 'user').forEach(u => {
             let opt = document.createElement('option'); 
@@ -359,7 +519,6 @@
             dlUserSelect.appendChild(opt);
         });
 
-        // Setup Month/Year Dropdowns
         dlMonthSelect.innerHTML = ''; 
         monthNames.forEach((m, index) => {
             let opt = document.createElement('option'); 
@@ -377,11 +536,9 @@
         dlMonthSelect.value = selectedMonth;
         dlYearSelect.value = selectedYear;
 
-        // Set default To Date (Today)
         const localDate = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
         document.getElementById('dlToDate').value = localDate;
         
-        // Set default From Date (7 days ago)
         let weekAgo = new Date(today);
         weekAgo.setDate(weekAgo.getDate() - 7);
         const fromLocalDate = new Date(weekAgo.getTime() - (weekAgo.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
@@ -439,7 +596,6 @@
             return;
         }
 
-        // Parse dates safely to avoid timezone issues
         const fParts = fromDateVal.split('-');
         const tParts = toDateVal.split('-');
         const startDate = new Date(fParts[0], fParts[1] - 1, fParts[2]);
@@ -460,17 +616,14 @@
 
             let currentDate = new Date(startDate.getTime());
             
-            // Loop through each day in the date range
             while(currentDate <= endDate) {
                 let y = currentDate.getFullYear();
                 let m = currentDate.getMonth();
                 let d = currentDate.getDate();
                 let dayOfWeek = currentDate.getDay();
                 
-                // Format date string for the CSV output (YYYY-MM-DD)
                 let dateString = `${y}-${String(m+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
-                // Fetch data for whatever month/year we are currently iterating over
                 const storageKey = `ht_data_${userObj.username}_${y}_${m}`;
                 const savedData = JSON.parse(localStorage.getItem(storageKey)) || {};
 
@@ -486,7 +639,6 @@
                     csvContent += `${userObj.username},${dateString},"${habit.name}",${statusText}\n`;
                 });
 
-                // Move to the next day
                 currentDate.setDate(currentDate.getDate() + 1);
             }
         });
