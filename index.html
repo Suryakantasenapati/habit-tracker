@@ -3,97 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dynamic Habit Tracker Dashboard</title>
+    <title>Multi-User Habit Tracker Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Base Styles */
-        body {
-            font-family: Arial, sans-serif;
-            margin: 10px; /* Reduced margin for mobile */
-            background-color: #f8f9fa;
-        }
+        body { font-family: Arial, sans-serif; margin: 10px; background-color: #f8f9fa; }
         
-        .dashboard-container {
+        /* --- AUTH & ADMIN STYLES --- */
+        .auth-container, .admin-container {
+            max-width: 400px;
+            margin: 50px auto;
             background: white;
-            padding: 10px;
+            padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-            position: relative;
-        }
-        
-        .controls-container {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap; /* Allows wrapping on tiny screens */
-        }
-        
-        select {
-            padding: 8px 12px;
-            font-size: 16px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            background: #fff;
-            cursor: pointer;
-            font-weight: bold;
-            color: #0b5394;
-        }
-        
-        .header-title {
-            background-color: #0b5394;
-            color: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             text-align: center;
-            padding: 8px;
-            font-size: 20px;
-            font-weight: bold;
-            border: 1px solid #ccc;
-            margin-bottom: 10px;
         }
+        .auth-container h2, .admin-container h2 { color: #0b5394; margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+        .input-group input, .input-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 10px; background: #0b5394; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px;}
+        .btn:hover { background: #083c6b; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
+        .logout-btn { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; float: right; margin: 5px; }
         
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            text-align: center;
-            font-size: 13px;
-            table-layout: fixed;
-            min-width: 1000px; /* Forces horizontal scroll instead of squishing elements completely */
-        }
-        
-        th, td {
-            border: 1px solid #c0c0c0;
-            padding: 4px;
-            height: 24px;
-        }
+        .user-list { text-align: left; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px; }
+        .user-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #f9f9f9; border-bottom: 1px solid #ddd; margin-bottom: 5px;}
+        .user-item button { padding: 4px 8px; font-size: 12px; }
 
-        /* --- STICKY LEFT COLUMN (For Mobile Swiping) --- */
-        .habit-name, .summary-label {
-            position: sticky;
-            left: 0;
-            background-color: white !important; /* Must be solid so scrolling data hides behind it */
-            z-index: 10;
-            box-shadow: 2px 0 4px -1px rgba(0,0,0,0.2); /* Creates a visual shadow edge */
-        }
+        /* --- DASHBOARD STYLES (Hidden by default) --- */
+        #appView { display: none; }
         
-        #weekHeaderRow th:first-child {
-            z-index: 15; /* Top-left corner needs highest priority */
-        }
+        .dashboard-container { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow-x: auto; -webkit-overflow-scrolling: touch; position: relative; }
+        .controls-container { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        select.date-select { padding: 8px 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; background: #fff; cursor: pointer; font-weight: bold; color: #0b5394; }
+        .header-title { background-color: #0b5394; color: white; text-align: center; padding: 8px; font-size: 20px; font-weight: bold; border: 1px solid #ccc; margin-bottom: 10px; clear: both;}
         
-        .habit-name {
-            text-align: left;
-            width: 160px;
-            vertical-align: top;
-            padding-top: 10px;
-            line-height: 1.6;
-        }
-        
-        .summary-label { 
-            font-weight: bold; 
-            text-align: right; 
-            padding-right: 10px; 
-        }
+        table { border-collapse: collapse; width: 100%; text-align: center; font-size: 13px; table-layout: fixed; min-width: 1000px; }
+        th, td { border: 1px solid #c0c0c0; padding: 4px; height: 24px; }
+
+        /* Sticky Left Column */
+        .habit-name, .summary-label { position: sticky; left: 0; background-color: white !important; z-index: 10; box-shadow: 2px 0 4px -1px rgba(0,0,0,0.2); }
+        #weekHeaderRow th:first-child { z-index: 15; }
+        .habit-name { text-align: left; width: 160px; vertical-align: top; padding-top: 10px; line-height: 1.6; }
+        .summary-label { font-weight: bold; text-align: right; padding-right: 10px; }
 
         /* Column Sizings */
         .col-day { width: 24px; }
@@ -108,28 +62,8 @@
         .w4-bg { background-color: #b6d7a8; } .w4-text { color: white; background-color: #93c47d; font-weight: bold; }
         .w5-bg { background-color: #d5a6bd; } .w5-text { color: white; background-color: #c27ba0; font-weight: bold; }
 
-        /* Custom Checkbox optimized for Touch */
-        .custom-cb {
-            appearance: none;
-            width: 16px; 
-            height: 16px;
-            border: 2px solid;
-            border-radius: 2px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: white;
-            margin: 0;
-            vertical-align: middle;
-        }
-        .custom-cb:checked::after {
-            content: '✓';
-            color: white;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        
+        .custom-cb { appearance: none; width: 16px; height: 16px; border: 2px solid; border-radius: 2px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; background: white; margin: 0; vertical-align: middle; }
+        .custom-cb:checked::after { content: '✓'; color: white; font-size: 12px; font-weight: bold; }
         .cb-w1 { border-color: #b45f06; } .cb-w1:checked { background: #b45f06; }
         .cb-w2 { border-color: #0b5394; } .cb-w2:checked { background: #0b5394; }
         .cb-w3 { border-color: #990000; } .cb-w3:checked { background: #990000; }
@@ -138,79 +72,185 @@
 
         .off-day { background-color: #dddddd !important; color: #777 !important; font-size: 9px; font-weight: bold; }
 
-        /* Progress Bar Enhancements */
         .progress-bar-container { width: 100%; height: 16px; background-color: #e0e0e0; position: relative; border-radius: 3px; overflow: hidden; }
         .progress-bar { height: 100%; background-color: #800080; width: 0%; transition: width 0.3s ease; }
         .progress-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; text-align: center; font-size: 11px; font-weight: bold; line-height: 16px; color: #000; text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8); z-index: 2; pointer-events: none; }
 
         .chart-row td { height: 100px; vertical-align: middle; }
+        .chart-wrapper { position: relative; width: 100%; height: 90px; display: flex; justify-content: center; align-items: center; }
+        .chart-wrapper canvas { max-width: 65px !important; max-height: 65px !important; z-index: 1; position: relative; }
         
-        /* WEEKLY CHARTS LAYOUT */
-        .chart-wrapper {
-            position: relative;
-            width: 100%;
-            height: 90px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .chart-wrapper canvas {
-            max-width: 65px !important;
-            max-height: 65px !important;
-            z-index: 1; 
-            position: relative;
-        }
-        
-        /* TOTAL CHART LAYOUT */
-        .big-chart-container { 
-            border: 1px solid #c0c0c0; 
-            padding: 5px; 
-            background: white; 
-            position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-            min-height: 100px;
-            width: 100%;
-            box-sizing: border-box;
-        }
+        .big-chart-container { border: 1px solid #c0c0c0; padding: 5px; background: white; position: relative; display: flex; justify-content: center; align-items: center; height: 100%; min-height: 100px; width: 100%; box-sizing: border-box; }
         .big-chart-container canvas { max-width: 100%; max-height: 90px; z-index: 1; }
         .total-percent-overlay { position: absolute; font-size: 18px; font-weight: bold; color: #333; z-index: 2; pointer-events: none; }
 
-        /* --- MOBILE RESPONSIVENESS TWEAKS --- */
         @media screen and (max-width: 768px) {
             .header-title { font-size: 16px; padding: 6px; }
             .habit-name { width: 110px; font-size: 11px; line-height: 1.4; padding-top: 6px; }
             .summary-label { font-size: 11px; padding-right: 5px; }
             .col-goal { width: 60px; font-size: 11px; }
             .col-progress { width: 80px; }
-            table { min-width: 800px; } /* Allows shrinking down slightly before forcing scroll */
+            table { min-width: 800px; }
             .chart-wrapper canvas { max-width: 55px !important; max-height: 55px !important; }
         }
     </style>
 </head>
 <body>
 
-<div class="dashboard-container">
-    <div class="controls-container">
-        <select id="monthSelect"></select>
-        <select id="yearSelect"></select>
+<div id="loginView" class="auth-container">
+    <h2>System Login</h2>
+    <div id="loginError" style="color:red; font-size:12px; margin-bottom:10px;"></div>
+    <div class="input-group">
+        <label>Username</label>
+        <input type="text" id="usernameInput" placeholder="Enter username">
+    </div>
+    <div class="input-group">
+        <label>Password</label>
+        <input type="password" id="passwordInput" placeholder="Enter password">
+    </div>
+    <button class="btn" onclick="attemptLogin()">Log In</button>
+</div>
+
+<div id="adminView" class="admin-container" style="display:none;">
+    <button class="logout-btn" onclick="logout()">Logout</button>
+    <h2>Admin Control Panel</h2>
+    
+    <div style="background:#f4f4f4; padding:15px; border-radius:4px; margin-bottom:20px;">
+        <h4 style="margin-top:0;">Create New User</h4>
+        <div class="input-group">
+            <input type="text" id="newUsername" placeholder="New Username">
+        </div>
+        <div class="input-group">
+            <input type="text" id="newPassword" placeholder="New Password">
+        </div>
+        <button class="btn" onclick="createUser()">Add User</button>
     </div>
 
-    <div class="header-title" id="mainHeader">(Month) (Year) Habit Tracker</div>
+    <h4>Current Users</h4>
+    <div id="userList" class="user-list">
+        </div>
+</div>
 
-    <table id="trackerTable">
-        <thead id="tableHead">
-            </thead>
-        <tbody id="trackerBody">
-            </tbody>
-        <tbody id="summaryBody">
-            </tbody>
-    </table>
+<div id="appView">
+    <div class="dashboard-container">
+        <button class="logout-btn" onclick="logout()">Logout</button>
+        <div class="controls-container">
+            <select id="monthSelect" class="date-select"></select>
+            <select id="yearSelect" class="date-select"></select>
+        </div>
+
+        <div class="header-title" id="mainHeader">(Month) (Year) Habit Tracker</div>
+
+        <table id="trackerTable">
+            <thead id="tableHead"></thead>
+            <tbody id="trackerBody"></tbody>
+            <tbody id="summaryBody"></tbody>
+        </table>
+    </div>
 </div>
 
 <script>
+    // --- AUTHENTICATION & MULTI-USER LOGIC ---
+    let users = JSON.parse(localStorage.getItem('ht_users')) || [
+        { username: 'admin', password: '123', role: 'admin' },
+        { username: 'user1', password: '123', role: 'user' },
+        { username: 'user2', password: '123', role: 'user' }
+    ];
+    let currentUser = null;
+
+    function saveUsers() {
+        localStorage.setItem('ht_users', JSON.stringify(users));
+    }
+
+    function checkSession() {
+        const sessionUser = sessionStorage.getItem('ht_session');
+        if (sessionUser) {
+            currentUser = users.find(u => u.username === sessionUser);
+            routeUser();
+        } else {
+            showView('loginView');
+        }
+    }
+
+    function attemptLogin() {
+        const u = document.getElementById('usernameInput').value.trim();
+        const p = document.getElementById('passwordInput').value.trim();
+        const found = users.find(user => user.username === u && user.password === p);
+
+        if (found) {
+            currentUser = found;
+            sessionStorage.setItem('ht_session', found.username);
+            document.getElementById('loginError').innerText = "";
+            routeUser();
+        } else {
+            document.getElementById('loginError').innerText = "Invalid credentials!";
+        }
+    }
+
+    function logout() {
+        currentUser = null;
+        sessionStorage.removeItem('ht_session');
+        document.getElementById('usernameInput').value = '';
+        document.getElementById('passwordInput').value = '';
+        showView('loginView');
+    }
+
+    function routeUser() {
+        if (currentUser.role === 'admin') {
+            showView('adminView');
+            renderUserList();
+        } else {
+            showView('appView');
+            initControls();
+            loadUserData(); // Load specific user's saved checkboxes
+            renderDashboard();
+        }
+    }
+
+    function showView(viewId) {
+        document.getElementById('loginView').style.display = 'none';
+        document.getElementById('adminView').style.display = 'none';
+        document.getElementById('appView').style.display = 'none';
+        document.getElementById(viewId).style.display = 'block';
+    }
+
+    // --- ADMIN LOGIC ---
+    function renderUserList() {
+        const list = document.getElementById('userList');
+        list.innerHTML = '';
+        users.forEach(u => {
+            if (u.role === 'admin') return; // Don't delete admin
+            list.innerHTML += `
+                <div class="user-item">
+                    <span><strong>${u.username}</strong> (Pass: ${u.password})</span>
+                    <button class="btn-danger" onclick="deleteUser('${u.username}')">Delete</button>
+                </div>
+            `;
+        });
+    }
+
+    function createUser() {
+        const u = document.getElementById('newUsername').value.trim();
+        const p = document.getElementById('newPassword').value.trim();
+        if(!u || !p) return alert("Enter username and password");
+        if(users.find(x => x.username === u)) return alert("User already exists!");
+        
+        users.push({ username: u, password: p, role: 'user' });
+        saveUsers();
+        document.getElementById('newUsername').value = '';
+        document.getElementById('newPassword').value = '';
+        renderUserList();
+    }
+
+    function deleteUser(username) {
+        if(confirm(`Are you sure you want to delete ${username}? Their data will remain in storage but they cannot log in.`)) {
+            users = users.filter(u => u.username !== username);
+            saveUsers();
+            renderUserList();
+        }
+    }
+
+    // --- TRACKER LOGIC ---
     const habits = [
         { id: 1, name: "Daily 50 New Connection", dailyTarget: 50 },
         { id: 2, name: "Find 20 New Company", dailyTarget: 20 },
@@ -218,21 +258,48 @@
         { id: 4, name: "Daily Data Update", dailyTarget: 1 }
     ];
 
-    const initialChecks = {
-        1: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31],
-        2: [1, 2, 3, 4, 5, 6, 7], 
-        3: [1, 2, 3, 4, 5, 6, 7], 
-        4: [1, 2, 3, 4, 5, 6, 7]  
-    };
+    let userHabitData = {}; // Stores the checked days for the logged-in user
 
+    function loadUserData() {
+        // Look for data specific to the logged in user + selected month/year
+        const storageKey = `ht_data_${currentUser.username}_${selectedYear}_${selectedMonth}`;
+        const saved = localStorage.getItem(storageKey);
+        
+        if (saved) {
+            userHabitData = JSON.parse(saved);
+        } else {
+            // Default blank state if they haven't saved anything this month
+            userHabitData = { 1: [], 2: [], 3: [], 4: [] };
+        }
+    }
+
+    function saveTrackerState(habitId, day, isChecked) {
+        if (!userHabitData[habitId]) userHabitData[habitId] = [];
+        
+        if (isChecked) {
+            if (!userHabitData[habitId].includes(day)) userHabitData[habitId].push(day);
+        } else {
+            userHabitData[habitId] = userHabitData[habitId].filter(d => d !== day);
+        }
+
+        // Save to browser based on the specific user and month
+        const storageKey = `ht_data_${currentUser.username}_${selectedYear}_${selectedMonth}`;
+        localStorage.setItem(storageKey, JSON.stringify(userHabitData));
+        
+        calculate(); // Recalculate dashboard metrics
+    }
+
+    // Existing UI variables
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const baseColors = ['#b45f06', '#0b5394', '#990000', '#38761d', '#741b47'];
-    
     let chartInstances = {};
     let currentWeeks = [];
     let daysInMonth = 31;
-    let selectedYear = 2026;
-    let selectedMonth = 6; // July (0-indexed)
+    
+    // Set to current real-world date initially
+    let today = new Date();
+    let selectedYear = today.getFullYear();
+    let selectedMonth = today.getMonth(); 
 
     function isSaturday(day) {
         return new Date(selectedYear, selectedMonth, day).getDay() === 6;
@@ -241,26 +308,30 @@
     function initControls() {
         const mSelect = document.getElementById('monthSelect');
         const ySelect = document.getElementById('yearSelect');
+        mSelect.innerHTML = ''; ySelect.innerHTML = '';
 
         monthNames.forEach((m, index) => {
-            let opt = document.createElement('option');
-            opt.value = index;
-            opt.innerText = m;
+            let opt = document.createElement('option'); opt.value = index; opt.innerText = m;
             mSelect.appendChild(opt);
         });
-
         for (let y = 2024; y <= 2030; y++) {
-            let opt = document.createElement('option');
-            opt.value = y;
-            opt.innerText = y;
+            let opt = document.createElement('option'); opt.value = y; opt.innerText = y;
             ySelect.appendChild(opt);
         }
 
         mSelect.value = selectedMonth;
         ySelect.value = selectedYear;
 
-        mSelect.addEventListener('change', (e) => { selectedMonth = parseInt(e.target.value); renderDashboard(); });
-        ySelect.addEventListener('change', (e) => { selectedYear = parseInt(e.target.value); renderDashboard(); });
+        mSelect.addEventListener('change', (e) => { 
+            selectedMonth = parseInt(e.target.value); 
+            loadUserData(); // Reload data when month changes
+            renderDashboard(); 
+        });
+        ySelect.addEventListener('change', (e) => { 
+            selectedYear = parseInt(e.target.value); 
+            loadUserData(); // Reload data when year changes
+            renderDashboard(); 
+        });
     }
 
     function calculateDynamicWeeks() {
@@ -277,21 +348,13 @@
                 if (!isSaturday(d)) workingDays++;
             }
 
-            currentWeeks.push({
-                name: 'Week ' + (i + 1),
-                span: endDay - startDay + 1,
-                workingDays: workingDays,
-                bgClass: `w${i+1}-bg`,
-                textClass: `w${i+1}-text`,
-                cbClass: `cb-w${i+1}`,
-                color: baseColors[i]
-            });
+            currentWeeks.push({ name: 'Week ' + (i + 1), span: endDay - startDay + 1, workingDays: workingDays, bgClass: `w${i+1}-bg`, textClass: `w${i+1}-text`, cbClass: `cb-w${i+1}`, color: baseColors[i] });
             startDay = endDay + 1;
         }
     }
 
     function renderDashboard() {
-        document.getElementById('mainHeader').innerText = `${monthNames[selectedMonth]} ${selectedYear} Habit Tracker`;
+        document.getElementById('mainHeader').innerText = `${currentUser.username.toUpperCase()}'s Tracker - ${monthNames[selectedMonth]} ${selectedYear}`;
         calculateDynamicWeeks();
         
         Object.values(chartInstances).forEach(chart => chart.destroy());
@@ -313,22 +376,17 @@
         let currentDay = 1;
         currentWeeks.forEach(week => {
             weekRow += `<th colspan="${week.span}" class="${week.textClass}">${week.name}</th>`;
-            
             for (let i = 0; i < week.span; i++) {
                 let dateObj = new Date(selectedYear, selectedMonth, currentDay);
                 let dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
                 let offClass = isSaturday(currentDay) ? 'off-day' : '';
-
                 datesRow += `<th class="col-day ${week.bgClass} ${offClass}">${currentDay}</th>`;
                 daysRow += `<th class="col-day day-text ${week.bgClass} ${offClass}">${dayName}</th>`;
                 currentDay++;
             }
         });
-
         weekRow += `<th rowspan="3" class="col-goal" style="background:white;">Monthly Goal</th><th rowspan="3" class="col-progress">Monthly Progress</th></tr>`;
-        datesRow += `</tr>`;
-        daysRow += `</tr>`;
-        
+        datesRow += `</tr>`; daysRow += `</tr>`;
         thead.innerHTML = weekRow + datesRow + daysRow;
     }
 
@@ -345,9 +403,10 @@
                     if (isSaturday(dayCount)) {
                         tr += `<td class="${week.bgClass} off-day">OFF</td>`;
                     } else {
-                        const isChecked = (initialChecks[habit.id] && initialChecks[habit.id].includes(dayCount)) ? 'checked' : '';
+                        // Check local user data instead of hardcoded data
+                        const isChecked = (userHabitData[habit.id] && userHabitData[habit.id].includes(dayCount)) ? 'checked' : '';
                         tr += `<td class="${week.bgClass}">
-                            <input type="checkbox" class="custom-cb ${week.cbClass}" data-day="${dayCount}" data-week="${week.name}" data-habit="${habit.id}" ${isChecked} onchange="calculate()">
+                            <input type="checkbox" class="custom-cb ${week.cbClass}" data-day="${dayCount}" data-week="${week.name}" data-habit="${habit.id}" ${isChecked} onchange="saveTrackerState(${habit.id}, ${dayCount}, this.checked)">
                         </td>`;
                     }
                     dayCount++;
@@ -368,35 +427,21 @@
     function renderSummary() {
         const summary = document.getElementById('summaryBody');
         summary.innerHTML = '';
-
-        // Separated sticky cell from the colspan to prevent browser rendering bugs on scroll
         summary.innerHTML += `<tr><td class="summary-label" style="border:none;"></td><td colspan="${daysInMonth}" style="border:none;"></td><th style="font-weight:bold;">Total</th><td style="border:none;"></td></tr>`;
 
         let rComp = `<tr><td class="summary-label">Habits Completed</td>`;
-        for(let i=1; i<=daysInMonth; i++) {
-            let offClass = isSaturday(i) ? 'off-day' : '';
-            rComp += `<td id="d-comp-${i}" class="${offClass}">-</td>`;
-        }
+        for(let i=1; i<=daysInMonth; i++) { rComp += `<td id="d-comp-${i}" class="${isSaturday(i) ? 'off-day' : ''}">-</td>`; }
         rComp += `<td id="grand-comp" class="col-goal">0</td><td style="border:none;"></td></tr>`;
         summary.innerHTML += rComp;
 
         let rInc = `<tr><td class="summary-label">Habits Incomplete</td>`;
-        for(let i=1; i<=daysInMonth; i++) {
-            let offClass = isSaturday(i) ? 'off-day' : '';
-            rInc += `<td id="d-inc-${i}" class="${offClass}">-</td>`;
-        }
+        for(let i=1; i<=daysInMonth; i++) { rInc += `<td id="d-inc-${i}" class="${isSaturday(i) ? 'off-day' : ''}">-</td>`; }
         rInc += `<td id="grand-inc" class="col-goal">0</td><th style="font-weight:bold; border-bottom:none;">Total Monthly Progress</th></tr>`;
         summary.innerHTML += rInc;
 
         let rWComp = `<tr><td class="summary-label">Weekly Habits Completed</td>`;
         currentWeeks.forEach(w => rWComp += `<td colspan="${w.span}" id="w-comp-${w.name.replace(' ', '')}">0</td>`);
-        
-        rWComp += `<td colspan="2" rowspan="4" style="vertical-align:top;">
-                        <div class="big-chart-container">
-                            <canvas id="chart-Total"></canvas>
-                            <span class="total-percent-overlay" id="total-percent-text">0%</span>
-                        </div>
-                   </td></tr>`;
+        rWComp += `<td colspan="2" rowspan="4" style="vertical-align:top;"><div class="big-chart-container"><canvas id="chart-Total"></canvas><span class="total-percent-overlay" id="total-percent-text">0%</span></div></td></tr>`;
         summary.innerHTML += rWComp;
 
         let rWInc = `<tr><td class="summary-label">Weekly Habits Incomplete</td>`;
@@ -404,13 +449,7 @@
         summary.innerHTML += rWInc + `</tr>`;
 
         let rCharts = `<tr class="chart-row"><td class="summary-label">Progress per Week</td>`;
-        currentWeeks.forEach(w => {
-            rCharts += `<td colspan="${w.span}">
-                            <div class="chart-wrapper">
-                                <canvas id="chart-${w.name.replace(' ', '')}"></canvas>
-                            </div>
-                        </td>`;
-        });
+        currentWeeks.forEach(w => { rCharts += `<td colspan="${w.span}"><div class="chart-wrapper"><canvas id="chart-${w.name.replace(' ', '')}"></canvas></div></td>`; });
         summary.innerHTML += rCharts + `</tr>`;
 
         let rPerc = `<tr><td class="summary-label" style="font-weight:bold;">Percentage % per Week</td>`;
@@ -419,109 +458,61 @@
     }
 
     function initCharts() {
-        const createDonut = (id, color) => {
+        const createDonut = (id, color, cutout) => {
             const ctx = document.getElementById(id).getContext('2d');
-            return new Chart(ctx, {
-                type: 'doughnut',
-                data: { labels: ['Completed', 'Incomplete'], datasets: [{ data: [0, 1], backgroundColor: [color, '#e0e0e0'], borderWidth: 0 }] },
-                options: { cutout: '65%', plugins: { legend: { display: false }, tooltip: { enabled: false } }, maintainAspectRatio: false }
-            });
+            return new Chart(ctx, { type: 'doughnut', data: { labels: ['Completed', 'Incomplete'], datasets: [{ data: [0, 1], backgroundColor: [color, '#e0e0e0'], borderWidth: 0 }] }, options: { cutout: cutout, plugins: { legend: { display: false }, tooltip: { enabled: false } }, maintainAspectRatio: false } });
         };
-
-        currentWeeks.forEach(week => {
-            chartInstances[week.name.replace(' ', '')] = createDonut(`chart-${week.name.replace(' ', '')}`, week.color);
-        });
-
-        const ctxTotal = document.getElementById('chart-Total').getContext('2d');
-        chartInstances['Total'] = new Chart(ctxTotal, {
-            type: 'doughnut',
-            data: { labels: ['Completed', 'Incomplete'], datasets: [{ data: [0, 1], backgroundColor: ['#4caf50', '#f44336'], borderWidth: 0 }] },
-            options: { cutout: '70%', plugins: { legend: { display: false }, tooltip: { enabled: false } }, maintainAspectRatio: false }
-        });
+        currentWeeks.forEach(week => { chartInstances[week.name.replace(' ', '')] = createDonut(`chart-${week.name.replace(' ', '')}`, week.color, '65%'); });
+        chartInstances['Total'] = createDonut('chart-Total', '#4caf50', '70%');
+        chartInstances['Total'].data.datasets[0].backgroundColor = ['#4caf50', '#f44336'];
     }
 
     function calculate() {
         const totalHabits = habits.length; 
         let weeklyStats = {};
-        
         currentWeeks.forEach(w => weeklyStats[w.name] = { completed: 0, total: w.workingDays * totalHabits });
-        
         let grandTotalCompleted = 0;
         let workingDaysInMonth = currentWeeks.reduce((sum, w) => sum + w.workingDays, 0);
         const grandTotalPossible = workingDaysInMonth * totalHabits;
 
         for (let day = 1; day <= daysInMonth; day++) {
             if (isSaturday(day)) {
-                document.getElementById(`d-comp-${day}`).innerText = "OFF";
-                document.getElementById(`d-inc-${day}`).innerText = "OFF";
-                continue;
+                document.getElementById(`d-comp-${day}`).innerText = "OFF"; document.getElementById(`d-inc-${day}`).innerText = "OFF"; continue;
             }
-
-            const checkboxes = document.querySelectorAll(`input[data-day="${day}"]`);
             let completedToday = 0;
-
-            checkboxes.forEach(cb => {
-                let weekName = cb.getAttribute('data-week');
-                if (cb.checked) {
-                    completedToday++;
-                    weeklyStats[weekName].completed++;
-                    grandTotalCompleted++;
-                }
+            document.querySelectorAll(`input[data-day="${day}"]`).forEach(cb => {
+                if (cb.checked) { completedToday++; weeklyStats[cb.getAttribute('data-week')].completed++; grandTotalCompleted++; }
             });
-
             document.getElementById(`d-comp-${day}`).innerText = completedToday;
             document.getElementById(`d-inc-${day}`).innerText = totalHabits - completedToday;
         }
 
         currentWeeks.forEach(week => {
-            const wKey = week.name.replace(' ', '');
-            const stats = weeklyStats[week.name];
-            const incomplete = stats.total - stats.completed;
-            const percentage = stats.total > 0 ? ((stats.completed / stats.total) * 100).toFixed(2) : "0.00";
-
-            document.getElementById(`w-comp-${wKey}`).innerText = stats.completed;
-            document.getElementById(`w-inc-${wKey}`).innerText = incomplete;
-            document.getElementById(`w-perc-${wKey}`).innerText = `${percentage}%`;
-
-            if(stats.total === 0) {
-                chartInstances[wKey].data.datasets[0].data = [0, 1];
-                chartInstances[wKey].data.datasets[0].backgroundColor = ['#e0e0e0', '#e0e0e0'];
-            } else {
-                chartInstances[wKey].data.datasets[0].data = [stats.completed, incomplete];
-                chartInstances[wKey].data.datasets[0].backgroundColor = [week.color, '#e0e0e0'];
-            }
+            const wKey = week.name.replace(' ', ''); const stats = weeklyStats[week.name]; const incomplete = stats.total - stats.completed;
+            document.getElementById(`w-comp-${wKey}`).innerText = stats.completed; document.getElementById(`w-inc-${wKey}`).innerText = incomplete;
+            document.getElementById(`w-perc-${wKey}`).innerText = stats.total > 0 ? `${((stats.completed / stats.total) * 100).toFixed(2)}%` : "0.00%";
+            chartInstances[wKey].data.datasets[0].data = stats.total === 0 ? [0, 1] : [stats.completed, incomplete];
+            chartInstances[wKey].data.datasets[0].backgroundColor = stats.total === 0 ? ['#e0e0e0', '#e0e0e0'] : [week.color, '#e0e0e0'];
             chartInstances[wKey].update();
         });
 
-        const grandTotalIncomplete = grandTotalPossible - grandTotalCompleted;
         document.getElementById('grand-comp').innerText = grandTotalCompleted;
-        document.getElementById('grand-inc').innerText = grandTotalIncomplete;
-
-        chartInstances['Total'].data.datasets[0].data = [grandTotalCompleted, grandTotalIncomplete];
+        document.getElementById('grand-inc').innerText = grandTotalPossible - grandTotalCompleted;
+        chartInstances['Total'].data.datasets[0].data = [grandTotalCompleted, grandTotalPossible - grandTotalCompleted];
         chartInstances['Total'].update();
-
-        let overallPercent = grandTotalPossible > 0 ? ((grandTotalCompleted / grandTotalPossible) * 100).toFixed(1) : 0;
-        document.getElementById('total-percent-text').innerText = `${overallPercent}%`;
+        document.getElementById('total-percent-text').innerText = grandTotalPossible > 0 ? `${((grandTotalCompleted / grandTotalPossible) * 100).toFixed(1)}%` : "0%";
 
         habits.forEach(habit => {
             const checkedCount = document.querySelectorAll(`input[data-habit="${habit.id}"]:checked`).length;
-            const computedMonthlyGoal = habit.dailyTarget * workingDaysInMonth;
-            document.getElementById(`goal-val-${habit.id}`).innerText = computedMonthlyGoal;
-            
+            document.getElementById(`goal-val-${habit.id}`).innerText = habit.dailyTarget * workingDaysInMonth;
             let rawPercent = workingDaysInMonth > 0 ? (checkedCount / workingDaysInMonth) * 100 : 0;
-            let displayPercent = rawPercent.toFixed(1); 
-            
-            let widthPercent = rawPercent > 100 ? 100 : rawPercent;
-            
-            document.getElementById(`prog-${habit.id}`).style.width = `${widthPercent}%`;
-            document.getElementById(`prog-text-${habit.id}`).innerText = `${displayPercent}%`;
+            document.getElementById(`prog-${habit.id}`).style.width = `${rawPercent > 100 ? 100 : rawPercent}%`;
+            document.getElementById(`prog-text-${habit.id}`).innerText = `${rawPercent.toFixed(1)}%`;
         });
     }
 
-    window.onload = () => {
-        initControls();
-        renderDashboard();
-    };
+    // Initialize application check
+    window.onload = checkSession;
 </script>
 
 </body>
