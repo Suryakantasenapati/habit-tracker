@@ -23,6 +23,20 @@
         .input-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
         .input-group input, .input-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         
+        /* Show/Hide Password Toggle */
+        .password-wrapper { position: relative; }
+        .password-wrapper input { padding-right: 40px; } /* Make room for the icon */
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            user-select: none;
+            font-size: 18px;
+            color: #555;
+        }
+
         .btn { width: 100%; padding: 10px; background: #0b5394; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px;}
         .btn:hover { background: #083c6b; }
         .btn-success { background: #28a745; }
@@ -121,7 +135,10 @@
     </div>
     <div class="input-group">
         <label>Password</label>
-        <input type="password" id="passwordInput" placeholder="Enter password" onkeypress="handleLoginKeyPress(event)">
+        <div class="password-wrapper">
+            <input type="password" id="passwordInput" placeholder="Enter password" onkeypress="handleLoginKeyPress(event)">
+            <span class="toggle-password" onclick="togglePasswordVisibility('passwordInput', this)">👁️</span>
+        </div>
     </div>
     
     <button class="btn" onclick="attemptLogin()">Log In</button>
@@ -203,7 +220,10 @@
             <input type="text" id="newUsername" placeholder="New Username">
         </div>
         <div class="input-group">
-            <input type="text" id="newPassword" placeholder="New Password">
+            <div class="password-wrapper">
+                <input type="password" id="newPassword" placeholder="New Password">
+                <span class="toggle-password" onclick="togglePasswordVisibility('newPassword', this)">👁️</span>
+            </div>
         </div>
         <button class="btn" onclick="createUser()">Add User</button>
     </div>
@@ -251,6 +271,18 @@
     let today = new Date();
     let selectedYear = today.getFullYear();
     let selectedMonth = today.getMonth(); 
+
+    // Function to toggle password visibility
+    function togglePasswordVisibility(inputId, iconElement) {
+        const input = document.getElementById(inputId);
+        if (input.type === "password") {
+            input.type = "text";
+            iconElement.innerText = "🙈"; // Hide icon
+        } else {
+            input.type = "password";
+            iconElement.innerText = "👁️"; // Show icon
+        }
+    }
 
     function handleLoginKeyPress(event) {
         if (event.key === 'Enter') attemptLogin();
@@ -324,6 +356,11 @@
         sessionStorage.removeItem('ht_session');
         document.getElementById('usernameInput').value = '';
         document.getElementById('passwordInput').value = '';
+        
+        // Reset the password fields to hidden when logging out
+        document.getElementById('passwordInput').type = "password";
+        document.querySelectorAll('.toggle-password').forEach(icon => icon.innerText = "👁️");
+
         showView('loginView');
     }
 
@@ -473,6 +510,8 @@
         
         document.getElementById('newUsername').value = '';
         document.getElementById('newPassword').value = '';
+        document.getElementById('newPassword').type = "password";
+        document.querySelectorAll('#adminView .toggle-password').forEach(icon => icon.innerText = "👁️");
         
         renderUserList();
         initAdminControls();
