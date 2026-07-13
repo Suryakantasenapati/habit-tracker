@@ -175,6 +175,7 @@
     
     <h2 style="clear:both; padding-top: 10px;">Admin Control Panel</h2>
     
+    <!-- HABIT MANAGEMENT COMPONENT -->
     <div class="admin-section">
         <h4>Manage System Habits</h4>
         <div style="background:#fff; border: 1px solid #ccc; padding:10px; border-radius:4px; margin-bottom:15px;">
@@ -191,6 +192,7 @@
         <div id="habitManagementList" class="habit-list"></div>
     </div>
 
+    <!-- REPORT EXPORT GENERATION -->
     <div class="admin-section">
         <h4>Download User Reports (CSV)</h4>
         <div class="input-group">
@@ -227,6 +229,7 @@
         <button class="btn btn-info" onclick="downloadDateRangeReport()">Download Date Range CSV</button>
     </div>
 
+    <!-- USER CRUD ENGINE -->
     <div class="admin-section">
         <h4>Create New User Account</h4>
         <div class="input-group">
@@ -310,7 +313,6 @@
             habits = data.habitList || [];
         }
         
-        // Setup initial default schema structures if none exist in firestore collection
         let dataFixNeeded = false;
         if (users.length === 0) {
             users = [
@@ -351,7 +353,6 @@
             userHabitData = {};
         }
         
-        // Graceful initialization injection for dynamically added habits inside array index mapping
         habits.forEach(h => {
             if (!userHabitData[h.id]) userHabitData[h.id] = [];
         });
@@ -512,7 +513,6 @@
         });
     }
 
-    // --- DYNAMIC ADAPTIVE HABIT INJECTION CONFIGURATION ENGINE ---
     function renderAdminHabitList() {
         const container = document.getElementById('habitManagementList');
         container.innerHTML = '';
@@ -555,6 +555,7 @@
         alert("New Tracking Habit successfully instantiated system-wide.");
     };
 
+    // --- AUTOMATIC HEADING TEXT SYNC INJECTION ENGINE ---
     window.updateHabitTarget = async (id) => {
         const habit = habits.find(h => h.id === id);
         if(!habit) return;
@@ -565,6 +566,12 @@
         const parsed = parseInt(newTarget);
         if(isNaN(parsed) || parsed <= 0) return alert("Target assignment parameter payload structure error.");
 
+        // Automatically replace the old integer inside the text title string if it exists
+        const oldTargetString = String(habit.dailyTarget);
+        if (habit.name.includes(oldTargetString)) {
+            habit.name = habit.name.replace(oldTargetString, String(parsed));
+        }
+
         habit.dailyTarget = parsed;
         await saveSystemDataToCloud();
         renderAdminHabitList();
@@ -574,7 +581,7 @@
         const habit = habits.find(h => h.id === id);
         if(!habit) return;
 
-        if(confirm(`Completely detach and delete the habit metric globally: "${habit.name}"?\nHistorical user records array mapping structures remain persistent but isolated from active dashboard visibility rendering view rules.`)) {
+        if(confirm(`Completely detach and delete the habit metric globally: "${habit.name}"?`)) {
             habits = habits.filter(h => h.id !== id);
             await saveSystemDataToCloud();
             renderAdminHabitList();
