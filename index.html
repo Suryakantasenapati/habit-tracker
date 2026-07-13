@@ -1,9 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Multi-User Habit Tracker Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 10px; background-color: #f8f9fa; }
+        
+        /* --- AUTH & ADMIN STYLES --- */
+        .auth-container, .admin-container {
+            max-width: 400px;
+            margin: 50px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            text-align: center;
+        }
+        .auth-container h2, .admin-container h2 { color: #0b5394; margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+        .input-group input, .input-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        
+        /* Show/Hide Password Toggle */
+        .password-wrapper { position: relative; }
+        .password-wrapper input { padding-right: 40px; } 
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            user-select: none;
+            font-size: 18px;
+            color: #555;
+        }
+
+        .btn { width: 100%; padding: 10px; background: #0b5394; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px;}
+        .btn:hover { background: #083c6b; }
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #218838; }
+        .btn-info { background: #17a2b8; color: white; border: none;}
+        .btn-info:hover { background: #138496; }
+        .btn-secondary { background: #6c757d; font-size: 14px; margin-top: 15px;}
+        .btn-secondary:hover { background: #5a6268; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
+        .logout-btn { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; float: right; margin: 5px; }
+        .admin-nav-btn { background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; float: left; margin: 5px; font-weight: bold; }
+        .change-pass-btn { background: #17a2b8; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; float: right; margin: 5px; font-weight: bold; }
+        .change-pass-btn:hover { background: #138496; }
+        
+        .user-list { text-align: left; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px; }
+        .user-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #f9f9f9; border-bottom: 1px solid #ddd; margin-bottom: 5px;}
+        .user-item button { padding: 4px 8px; font-size: 12px; margin-left: 5px; width: auto;}
+        .user-actions { display: flex; }
+
+        /* --- DASHBOARD STYLES --- */
+        #loginView, #setupSecurityView, #adminView, #appView { display: none; }
+        
+        .dashboard-container { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow-x: auto; -webkit-overflow-scrolling: touch; position: relative; }
+        .controls-container { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; clear: both; padding-top: 40px;}
+        select.date-select { padding: 8px 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; background: #fff; cursor: pointer; font-weight: bold; color: #0b5394; }
+        .header-title { background-color: #0b5394; color: white; text-align: center; padding: 8px; font-size: 20px; font-weight: bold; border: 1px solid #ccc; margin-bottom: 10px; clear: both;}
+        
+        table { border-collapse: collapse; width: 100%; text-align: center; font-size: 13px; table-layout: fixed; min-width: 1000px; }
+        th, td { border: 1px solid #c0c0c0; padding: 4px; height: 24px; }
+
+        /* Sticky Left Column */
+        .habit-name, .summary-label { position: sticky; left: 0; background-color: white !important; z-index: 10; box-shadow: 2px 0 4px -1px rgba(0,0,0,0.2); }
+        #weekHeaderRow th:first-child { z-index: 15; }
+        .habit-name { text-align: left; width: 160px; vertical-align: top; padding-top: 10px; line-height: 1.6; }
+        .summary-label { font-weight: bold; text-align: right; padding-right: 10px; }
+
+        /* Column Sizings */
+        .col-day { width: 24px; }
+        .col-goal { width: 75px; background-color: #fff2cc; font-weight: bold; } 
+        .col-progress { width: 100px; } 
+        .day-text { font-size: 10px; letter-spacing: -0.5px; }
+        
+        /* Week Colors */
+        .w1-bg { background-color: #f6b26b; } .w1-text { color: white; background-color: #e69138; font-weight: bold; }
+        .w2-bg { background-color: #9fc5e8; } .w2-text { color: white; background-color: #6fa8dc; font-weight: bold; }
+        .w3-bg { background-color: #ea9999; } .w3-text { color: white; background-color: #e06666; font-weight: bold; }
+        .w4-bg { background-color: #b6d7a8; } .w4-text { color: white; background-color: #93c47d; font-weight: bold; }
+        .w5-bg { background-color: #d5a6bd; } .w5-text { color: white; background-color: #c27ba0; font-weight: bold; }
+
+        .custom-cb { appearance: none; width: 16px; height: 16px; border: 2px solid; border-radius: 2px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; background: white; margin: 0; vertical-align: middle; }
+        .custom-cb:checked::after { content: '✓'; color: white; font-size: 12px; font-weight: bold; }
+        .custom-cb:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .cb-w1 { border-color: #b45f06; } .cb-w1:checked { background: #b45f06; }
+        .cb-w2 { border-color: #0b5394; } .cb-w2:checked { background: #0b5394; }
+        .cb-w3 { border-color: #990000; } .cb-w3:checked { background: #990000; }
+        .cb-w4 { border-color: #38761d; } .cb-w4:checked { background: #38761d; }
+        .cb-w5 { border-color: #741b47; } .cb-w5:checked { background: #741b47; }
+
+        .off-day { background-color: #dddddd !important; color: #777 !important; font-size: 9px; font-weight: bold; }
+
+        .progress-bar-container { width: 100%; height: 16px; background-color: #e0e0e0; position: relative; border-radius: 3px; overflow: hidden; }
+        .progress-bar { height: 100%; background-color: #800080; width: 0%; transition: width 0.3s ease; }
+        .progress-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; text-align: center; font-size: 11px; font-weight: bold; line-height: 16px; color: #000; text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8); z-index: 2; pointer-events: none; }
+
+        .chart-row td { height: 100px; vertical-align: middle; }
+        .chart-wrapper { position: relative; width: 100%; height: 90px; display: flex; justify-content: center; align-items: center; }
+        .chart-wrapper canvas { max-width: 65px !important; max-height: 65px !important; z-index: 1; position: relative; }
+        
+        .big-chart-container { border: 1px solid #c0c0c0; padding: 5px; background: white; position: relative; display: flex; justify-content: center; align-items: center; height: 100%; min-height: 100px; width: 100%; box-sizing: border-box; }
+        .big-chart-container canvas { max-width: 100%; max-height: 90px; z-index: 1; }
+        .total-percent-overlay { position: absolute; font-size: 18px; font-weight: bold; color: #333; z-index: 2; pointer-events: none; }
+
+        @media screen and (max-width: 768px) {
+            .header-title { font-size: 16px; padding: 6px; }
+            .habit-name { width: 110px; font-size: 11px; line-height: 1.4; padding-top: 6px; }
+            .summary-label { font-size: 11px; padding-right: 5px; }
+            .col-goal { width: 60px; font-size: 11px; }
+            .col-progress { width: 80px; }
+            table { min-width: 800px; }
+            .chart-wrapper canvas { max-width: 55px !important; max-height: 55px !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="loginView" class="auth-container">
+    <h2>System Login</h2>
+    <div id="loginError" style="color:red; font-size:12px; margin-bottom:10px;"></div>
+    
+    <div class="input-group">
+        <label>Username</label>
+        <input type="text" id="usernameInput" placeholder="Enter username" onkeypress="handleLoginKeyPress(event)">
+    </div>
+    <div class="input-group">
+        <label>Password</label>
+        <div class="password-wrapper">
+            <input type="password" id="passwordInput" placeholder="Enter password" onkeypress="handleLoginKeyPress(event)">
+            <span class="toggle-password" onclick="togglePasswordVisibility('passwordInput', this)">👁️</span>
+        </div>
+    </div>
+    
+    <button class="btn" onclick="attemptLogin()">Log In</button>
+    <button class="btn btn-secondary" onclick="forgotPassword()">Forgot Password?</button>
+</div>
+
+<div id="setupSecurityView" class="auth-container">
+    <h2>Account Setup</h2>
+    <p style="font-size: 14px; color: #555; margin-bottom: 20px;">Welcome! Since this is your first time logging in, please set up a security question. You will use this if you ever forget your password.</p>
+    
+    <div class="input-group">
+        <label>Choose a Security Question:</label>
+        <select id="userSetupQuestion">
+            <option value="">-- Select a Question --</option>
+            <option value="What is your favorite color?">What is your favorite color?</option>
+            <option value="What city were you born in?">What city were you born in?</option>
+            <option value="What is the name of your first pet?">What is the name of your first pet?</option>
+            <option value="What is your favorite food?">What is your favorite food?</option>
+            <option value="What was the name of your first school?">What was the name of your first school?</option>
+        </select>
+    </div>
+    <div class="input-group">
+        <label>Your Answer:</label>
+        <input type="text" id="userSetupAnswer" placeholder="Type your answer here" onkeypress="handleSetupKeyPress(event)">
+    </div>
+    <button class="btn" onclick="saveSecuritySetup()">Save & Continue to Dashboard</button>
+</div>
+
+<div id="adminView" class="admin-container">
+    <button class="logout-btn" onclick="logout()">Logout</button>
+    <button class="change-pass-btn" onclick="changePassword()">Change Password</button>
+    
+    <h2 style="clear:both; padding-top: 10px;">Admin Control Panel</h2>
+    
+    <div style="background:#e9ecef; padding:15px; border-radius:4px; margin-bottom:20px; text-align:left;">
+        <h4 style="margin-top:0; text-align:center; color:#0b5394;">Download User Reports (CSV)</h4>
+        
+        <div class="input-group">
+            <label>1. Select User</label>
+            <select id="dlUserSelect"></select>
+        </div>
+        
+        <hr style="border-top:1px solid #ccc; margin:15px 0;">
+        
+        <h5 style="margin:0 0 10px 0; color:#333;">Option A: Monthly Overview</h5>
+        <div style="display:flex; gap:10px;">
+            <div class="input-group" style="flex:1;">
+                <label>Month</label>
+                <select id="dlMonthSelect"></select>
+            </div>
+            <div class="input-group" style="flex:1;">
+                <label>Year</label>
+                <select id="dlYearSelect"></select>
+            </div>
+        </div>
+        <button class="btn btn-success" onclick="downloadMonthlyReport()">Download Monthly CSV</button>
+
+        <hr style="border-top:1px solid #ccc; margin:15px 0;">
+
+        <h5 style="margin:0 0 10px 0; color:#333;">Option B: Date Range Tracker</h5>
+        <div style="display:flex; gap:10px;">
+            <div class="input-group" style="flex:1;">
+                <label>From Date</label>
+                <input type="date" id="dlFromDate">
+            </div>
+            <div class="input-group" style="flex:1;">
+                <label>To Date</label>
+                <input type="date" id="dlToDate">
+            </div>
+        </div>
+        <button class="btn btn-info" onclick="downloadDateRangeReport()">Download Date Range CSV</button>
+    </div>
+
+    <div style="background:#f4f4f4; padding:15px; border-radius:4px; margin-bottom:20px;">
+        <h4 style="margin-top:0;">Create New User</h4>
+        <div class="input-group">
+            <input type="text" id="newUsername" placeholder="New Username">
+        </div>
+        <div class="input-group">
+            <div class="password-wrapper">
+                <input type="password" id="newPassword" placeholder="New Password">
+                <span class="toggle-password" onclick="togglePasswordVisibility('newPassword', this)">👁️</span>
+            </div>
+        </div>
+        <button class="btn" onclick="createUser()">Add User</button>
+    </div>
+
+    <h4>Current Users</h4>
+    <div id="userList" class="user-list"></div>
+</div>
+
+<div id="appView">
+    <div class="dashboard-container">
+        <button id="backToAdminBtn" class="admin-nav-btn" style="display:none;" onclick="routeUser()">← Back to Admin</button>
+        
+        <button class="logout-btn" onclick="logout()">Logout</button>
+        <button class="change-pass-btn" onclick="changePassword()">Change Password</button>
+        
+        <div class="controls-container">
+            <select id="userSelect" class="date-select"></select>
+            <select id="monthSelect" class="date-select"></select>
+            <select id="yearSelect" class="date-select"></select>
+        </div>
+
+        <div class="header-title" id="mainHeader">(User) - (Month) (Year) Habit Tracker</div>
+
+        <table id="trackerTable">
+            <thead id="tableHead"></thead>
+            <tbody id="trackerBody"></tbody>
+            <tbody id="summaryBody"></tbody>
+        </table>
+    </div>
+</div>
+
 <script type="module">
-    // 1. Import dynamic Firebase Architecture modules
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // 2. Verified Active Cloud Configuration
     const firebaseConfig = {
         apiKey: "AIzaSyAk89GKjNsmzIouMJn9Gt0XaB9uUekXsGg",
         authDomain: "habit-tracker-for-tm.firebaseapp.com",
@@ -14,11 +266,9 @@
         measurementId: "G-2D1EVDNYD5"
     };
 
-    // Initialize Global Instances
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // --- APPLICATION VARIABLES ---
     let users = [];
     let currentUser = null;
     let viewingUsername = null; 
@@ -39,15 +289,12 @@
         { id: 4, name: "Daily Data Update", dailyTarget: 1 }
     ];
 
-    // --- CLOUD DATABASING METHODS ---
-
     async function fetchUsersFromCloud() {
         const userRef = doc(db, "system", "auth");
         const docSnap = await getDoc(userRef);
         if (docSnap.exists()) {
             users = docSnap.data().userList || [];
         } else {
-            // Seed Database with standard profiles if completely blank
             users = [
                 { username: 'admin', password: '123', role: 'admin', secQuestion: "What is your favorite color?", secAnswer: "blue" },
                 { username: 'user1', password: '123', role: 'user', secQuestion: "What is your favorite color?", secAnswer: "blue" },
@@ -91,8 +338,6 @@
         calculate(); 
     }
 
-    // --- SYSTEM OPERATIONS & RUNTIME VALIDATIONS ---
-
     async function checkSession() {
         await fetchUsersFromCloud();
         const sessionUser = sessionStorage.getItem('ht_session');
@@ -133,8 +378,8 @@
         const sq = document.getElementById('userSetupQuestion').value;
         const sa = document.getElementById('userSetupAnswer').value.trim();
         
-        if (!sq) return alert("Please choose a security question from the dropdown.");
-        if (!sa) return alert("Please type an answer to your security question.");
+        if (!sq) return alert("Please choose a security question.");
+        if (!sa) return alert("Please type an answer.");
         
         currentUser.secQuestion = sq;
         currentUser.secAnswer = sa.toLowerCase(); 
@@ -167,7 +412,6 @@
         document.getElementById('usernameInput').value = '';
         document.getElementById('passwordInput').value = '';
         document.getElementById('passwordInput').type = "password";
-        document.querySelectorAll('.toggle-password').forEach(icon => icon.innerText = "👁️");
         showView('loginView');
     }
 
@@ -229,8 +473,6 @@
                 </div>`;
         });
     }
-
-    // --- DOM CONTROLS & RENDER CALCULATIONS ---
 
     function isSaturday(day) {
         return new Date(selectedYear, selectedMonth, day).getDay() === 6;
@@ -419,8 +661,6 @@
         });
     }
 
-    // --- REPORT DOWNLOAD ENGINE ---
-
     function initAdminControls() {
         const dlUserSelect = document.getElementById('dlUserSelect');
         dlUserSelect.innerHTML = '<option value="all">-- All Users --</option>';
@@ -490,7 +730,6 @@
         let csvContent = "data:text/csv;charset=utf-8,Username,Date,Habit Name,Status\n";
         const usersToDownload = u === 'all' ? users.filter(x => x.role === 'user') : [users.find(x => x.username === u)];
 
-        // Group fetches by unique month documents required
         let monthKeys = [];
         let cur = new Date(startDate.getTime());
         while(cur <= endDate) {
@@ -534,7 +773,6 @@
         });
     };
 
-    // --- HTML INTERFACE ATTACHMENTS (EXPORTS) ---
     window.attemptLogin = attemptLogin;
     window.saveSecuritySetup = saveSecuritySetup;
     window.saveTrackerState = saveTrackerState;
@@ -608,3 +846,6 @@
 
     window.onload = checkSession;
 </script>
+
+</body>
+</html>
