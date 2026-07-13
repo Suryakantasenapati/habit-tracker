@@ -1,316 +1,114 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Multi-User Habit Tracker Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 10px; background-color: #f8f9fa; }
-        
-        /* --- AUTH & ADMIN STYLES --- */
-        .auth-container, .admin-container {
-            max-width: 400px;
-            margin: 50px auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            text-align: center;
-        }
-        .auth-container h2, .admin-container h2 { color: #0b5394; margin-bottom: 20px; }
-        .input-group { margin-bottom: 15px; text-align: left; }
-        .input-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
-        .input-group input, .input-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        
-        /* Show/Hide Password Toggle */
-        .password-wrapper { position: relative; }
-        .password-wrapper input { padding-right: 40px; } /* Make room for the icon */
-        .toggle-password {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            cursor: pointer;
-            user-select: none;
-            font-size: 18px;
-            color: #555;
-        }
+<script type="module">
+    // 1. Import dynamic Firebase Architecture modules
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        .btn { width: 100%; padding: 10px; background: #0b5394; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px;}
-        .btn:hover { background: #083c6b; }
-        .btn-success { background: #28a745; }
-        .btn-success:hover { background: #218838; }
-        .btn-info { background: #17a2b8; color: white; border: none;}
-        .btn-info:hover { background: #138496; }
-        .btn-secondary { background: #6c757d; font-size: 14px; margin-top: 15px;}
-        .btn-secondary:hover { background: #5a6268; }
-        .btn-danger { background: #dc3545; }
-        .btn-danger:hover { background: #c82333; }
-        .logout-btn { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; float: right; margin: 5px; }
-        .admin-nav-btn { background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; float: left; margin: 5px; font-weight: bold; }
-        .change-pass-btn { background: #17a2b8; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; float: right; margin: 5px; font-weight: bold; }
-        .change-pass-btn:hover { background: #138496; }
-        
-        .user-list { text-align: left; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px; }
-        .user-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #f9f9f9; border-bottom: 1px solid #ddd; margin-bottom: 5px;}
-        .user-item button { padding: 4px 8px; font-size: 12px; margin-left: 5px; width: auto;}
-        .user-actions { display: flex; }
+    // 2. Verified Active Cloud Configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyAk89GKjNsmzIouMJn9Gt0XaB9uUekXsGg",
+        authDomain: "habit-tracker-for-tm.firebaseapp.com",
+        projectId: "habit-tracker-for-tm",
+        storageBucket: "habit-tracker-for-tm.firebasestorage.app",
+        messagingSenderId: "258753103740",
+        appId: "1:258753103740:web:1b82dd437b2b8b7c8706f9",
+        measurementId: "G-2D1EVDNYD5"
+    };
 
-        /* --- DASHBOARD STYLES (Hidden by default) --- */
-        #appView, #setupSecurityView { display: none; }
-        
-        .dashboard-container { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow-x: auto; -webkit-overflow-scrolling: touch; position: relative; }
-        .controls-container { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; clear: both; padding-top: 40px;}
-        select.date-select { padding: 8px 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; background: #fff; cursor: pointer; font-weight: bold; color: #0b5394; }
-        .header-title { background-color: #0b5394; color: white; text-align: center; padding: 8px; font-size: 20px; font-weight: bold; border: 1px solid #ccc; margin-bottom: 10px; clear: both;}
-        
-        table { border-collapse: collapse; width: 100%; text-align: center; font-size: 13px; table-layout: fixed; min-width: 1000px; }
-        th, td { border: 1px solid #c0c0c0; padding: 4px; height: 24px; }
+    // Initialize Global Instances
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-        /* Sticky Left Column */
-        .habit-name, .summary-label { position: sticky; left: 0; background-color: white !important; z-index: 10; box-shadow: 2px 0 4px -1px rgba(0,0,0,0.2); }
-        #weekHeaderRow th:first-child { z-index: 15; }
-        .habit-name { text-align: left; width: 160px; vertical-align: top; padding-top: 10px; line-height: 1.6; }
-        .summary-label { font-weight: bold; text-align: right; padding-right: 10px; }
-
-        /* Column Sizings */
-        .col-day { width: 24px; }
-        .col-goal { width: 75px; background-color: #fff2cc; font-weight: bold; } 
-        .col-progress { width: 100px; } 
-        .day-text { font-size: 10px; letter-spacing: -0.5px; }
-        
-        /* Week Colors */
-        .w1-bg { background-color: #f6b26b; } .w1-text { color: white; background-color: #e69138; font-weight: bold; }
-        .w2-bg { background-color: #9fc5e8; } .w2-text { color: white; background-color: #6fa8dc; font-weight: bold; }
-        .w3-bg { background-color: #ea9999; } .w3-text { color: white; background-color: #e06666; font-weight: bold; }
-        .w4-bg { background-color: #b6d7a8; } .w4-text { color: white; background-color: #93c47d; font-weight: bold; }
-        .w5-bg { background-color: #d5a6bd; } .w5-text { color: white; background-color: #c27ba0; font-weight: bold; }
-
-        .custom-cb { appearance: none; width: 16px; height: 16px; border: 2px solid; border-radius: 2px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; background: white; margin: 0; vertical-align: middle; }
-        .custom-cb:checked::after { content: '✓'; color: white; font-size: 12px; font-weight: bold; }
-        .custom-cb:disabled { opacity: 0.5; cursor: not-allowed; }
-        
-        .cb-w1 { border-color: #b45f06; } .cb-w1:checked { background: #b45f06; }
-        .cb-w2 { border-color: #0b5394; } .cb-w2:checked { background: #0b5394; }
-        .cb-w3 { border-color: #990000; } .cb-w3:checked { background: #990000; }
-        .cb-w4 { border-color: #38761d; } .cb-w4:checked { background: #38761d; }
-        .cb-w5 { border-color: #741b47; } .cb-w5:checked { background: #741b47; }
-
-        .off-day { background-color: #dddddd !important; color: #777 !important; font-size: 9px; font-weight: bold; }
-
-        .progress-bar-container { width: 100%; height: 16px; background-color: #e0e0e0; position: relative; border-radius: 3px; overflow: hidden; }
-        .progress-bar { height: 100%; background-color: #800080; width: 0%; transition: width 0.3s ease; }
-        .progress-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; text-align: center; font-size: 11px; font-weight: bold; line-height: 16px; color: #000; text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8); z-index: 2; pointer-events: none; }
-
-        .chart-row td { height: 100px; vertical-align: middle; }
-        .chart-wrapper { position: relative; width: 100%; height: 90px; display: flex; justify-content: center; align-items: center; }
-        .chart-wrapper canvas { max-width: 65px !important; max-height: 65px !important; z-index: 1; position: relative; }
-        
-        .big-chart-container { border: 1px solid #c0c0c0; padding: 5px; background: white; position: relative; display: flex; justify-content: center; align-items: center; height: 100%; min-height: 100px; width: 100%; box-sizing: border-box; }
-        .big-chart-container canvas { max-width: 100%; max-height: 90px; z-index: 1; }
-        .total-percent-overlay { position: absolute; font-size: 18px; font-weight: bold; color: #333; z-index: 2; pointer-events: none; }
-
-        @media screen and (max-width: 768px) {
-            .header-title { font-size: 16px; padding: 6px; }
-            .habit-name { width: 110px; font-size: 11px; line-height: 1.4; padding-top: 6px; }
-            .summary-label { font-size: 11px; padding-right: 5px; }
-            .col-goal { width: 60px; font-size: 11px; }
-            .col-progress { width: 80px; }
-            table { min-width: 800px; }
-            .chart-wrapper canvas { max-width: 55px !important; max-height: 55px !important; }
-        }
-    </style>
-</head>
-<body>
-
-<!-- LOGIN VIEW -->
-<div id="loginView" class="auth-container">
-    <h2>System Login</h2>
-    <div id="loginError" style="color:red; font-size:12px; margin-bottom:10px;"></div>
-    
-    <div class="input-group">
-        <label>Username</label>
-        <input type="text" id="usernameInput" placeholder="Enter username" onkeypress="handleLoginKeyPress(event)">
-    </div>
-    <div class="input-group">
-        <label>Password</label>
-        <div class="password-wrapper">
-            <input type="password" id="passwordInput" placeholder="Enter password" onkeypress="handleLoginKeyPress(event)">
-            <span class="toggle-password" onclick="togglePasswordVisibility('passwordInput', this)">👁️</span>
-        </div>
-    </div>
-    
-    <button class="btn" onclick="attemptLogin()">Log In</button>
-    <button class="btn btn-secondary" onclick="forgotPassword()">Forgot Password?</button>
-</div>
-
-<!-- USER SECURITY SETUP VIEW -->
-<div id="setupSecurityView" class="auth-container">
-    <h2>Account Setup</h2>
-    <p style="font-size: 14px; color: #555; margin-bottom: 20px;">Welcome! Since this is your first time logging in, please set up a security question. You will use this if you ever forget your password.</p>
-    
-    <div class="input-group">
-        <label>Choose a Security Question:</label>
-        <select id="userSetupQuestion">
-            <option value="">-- Select a Question --</option>
-            <option value="What is your favorite color?">What is your favorite color?</option>
-            <option value="What city were you born in?">What city were you born in?</option>
-            <option value="What is the name of your first pet?">What is the name of your first pet?</option>
-            <option value="What is your favorite food?">What is your favorite food?</option>
-            <option value="What was the name of your first school?">What was the name of your first school?</option>
-        </select>
-    </div>
-    <div class="input-group">
-        <label>Your Answer:</label>
-        <input type="text" id="userSetupAnswer" placeholder="Type your answer here" onkeypress="handleSetupKeyPress(event)">
-    </div>
-    <button class="btn" onclick="saveSecuritySetup()">Save & Continue to Dashboard</button>
-</div>
-
-<!-- ADMIN VIEW -->
-<div id="adminView" class="admin-container">
-    <button class="logout-btn" onclick="logout()">Logout</button>
-    <button class="change-pass-btn" onclick="changePassword()">Change Password</button>
-    
-    <h2 style="clear:both; padding-top: 10px;">Admin Control Panel</h2>
-    
-    <div style="background:#e9ecef; padding:15px; border-radius:4px; margin-bottom:20px; text-align:left;">
-        <h4 style="margin-top:0; text-align:center; color:#0b5394;">Download User Reports (CSV)</h4>
-        
-        <div class="input-group">
-            <label>1. Select User</label>
-            <select id="dlUserSelect"></select>
-        </div>
-        
-        <hr style="border-top:1px solid #ccc; margin:15px 0;">
-        
-        <h5 style="margin:0 0 10px 0; color:#333;">Option A: Monthly Overview</h5>
-        <div style="display:flex; gap:10px;">
-            <div class="input-group" style="flex:1;">
-                <label>Month</label>
-                <select id="dlMonthSelect"></select>
-            </div>
-            <div class="input-group" style="flex:1;">
-                <label>Year</label>
-                <select id="dlYearSelect"></select>
-            </div>
-        </div>
-        <button class="btn btn-success" onclick="downloadMonthlyReport()">Download Monthly CSV</button>
-
-        <hr style="border-top:1px solid #ccc; margin:15px 0;">
-
-        <h5 style="margin:0 0 10px 0; color:#333;">Option B: Date Range Tracker</h5>
-        <div style="display:flex; gap:10px;">
-            <div class="input-group" style="flex:1;">
-                <label>From Date</label>
-                <input type="date" id="dlFromDate">
-            </div>
-            <div class="input-group" style="flex:1;">
-                <label>To Date</label>
-                <input type="date" id="dlToDate">
-            </div>
-        </div>
-        <button class="btn btn-info" onclick="downloadDateRangeReport()">Download Date Range CSV</button>
-    </div>
-
-    <div style="background:#f4f4f4; padding:15px; border-radius:4px; margin-bottom:20px;">
-        <h4 style="margin-top:0;">Create New User</h4>
-        <div class="input-group">
-            <input type="text" id="newUsername" placeholder="New Username">
-        </div>
-        <div class="input-group">
-            <div class="password-wrapper">
-                <input type="password" id="newPassword" placeholder="New Password">
-                <span class="toggle-password" onclick="togglePasswordVisibility('newPassword', this)">👁️</span>
-            </div>
-        </div>
-        <button class="btn" onclick="createUser()">Add User</button>
-    </div>
-
-    <h4>Current Users</h4>
-    <div id="userList" class="user-list">
-    </div>
-</div>
-
-<!-- DASHBOARD VIEW -->
-<div id="appView">
-    <div class="dashboard-container">
-        <button id="backToAdminBtn" class="admin-nav-btn" style="display:none;" onclick="routeUser()">← Back to Admin</button>
-        
-        <button class="logout-btn" onclick="logout()">Logout</button>
-        <button class="change-pass-btn" onclick="changePassword()">Change Password</button>
-        
-        <div class="controls-container">
-            <select id="userSelect" class="date-select"></select>
-            <select id="monthSelect" class="date-select"></select>
-            <select id="yearSelect" class="date-select"></select>
-        </div>
-
-        <div class="header-title" id="mainHeader">(User) - (Month) (Year) Habit Tracker</div>
-
-        <table id="trackerTable">
-            <thead id="tableHead"></thead>
-            <tbody id="trackerBody"></tbody>
-            <tbody id="summaryBody"></tbody>
-        </table>
-    </div>
-</div>
-
-<script>
-    // --- AUTHENTICATION & MULTI-USER LOGIC ---
-    let users = JSON.parse(localStorage.getItem('ht_users')) || [
-        { username: 'admin', password: '123', role: 'admin', secQuestion: "What is your favorite color?", secAnswer: "blue" },
-        { username: 'user1', password: '123', role: 'user', secQuestion: "What is your favorite color?", secAnswer: "blue" },
-        { username: 'user2', password: '123', role: 'user', secQuestion: "What is the name of your first pet?", secAnswer: "buddy" }
-    ];
+    // --- APPLICATION VARIABLES ---
+    let users = [];
     let currentUser = null;
     let viewingUsername = null; 
-
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     let today = new Date();
     let selectedYear = today.getFullYear();
     let selectedMonth = today.getMonth(); 
+    let userHabitData = {};
+    const baseColors = ['#b45f06', '#0b5394', '#990000', '#38761d', '#741b47'];
+    let chartInstances = {};
+    let currentWeeks = [];
+    let daysInMonth = 31;
+    
+    const habits = [
+        { id: 1, name: "Daily 50 New Connection", dailyTarget: 50 },
+        { id: 2, name: "Find 20 New Company", dailyTarget: 20 },
+        { id: 3, name: "Daily 50 Email & Followup", dailyTarget: 50 },
+        { id: 4, name: "Daily Data Update", dailyTarget: 1 }
+    ];
 
-    // Function to toggle password visibility
-    function togglePasswordVisibility(inputId, iconElement) {
-        const input = document.getElementById(inputId);
-        if (input.type === "password") {
-            input.type = "text";
-            iconElement.innerText = "🙈"; // Hide icon
+    // --- CLOUD DATABASING METHODS ---
+
+    async function fetchUsersFromCloud() {
+        const userRef = doc(db, "system", "auth");
+        const docSnap = await getDoc(userRef);
+        if (docSnap.exists()) {
+            users = docSnap.data().userList || [];
         } else {
-            input.type = "password";
-            iconElement.innerText = "👁️"; // Show icon
+            // Seed Database with standard profiles if completely blank
+            users = [
+                { username: 'admin', password: '123', role: 'admin', secQuestion: "What is your favorite color?", secAnswer: "blue" },
+                { username: 'user1', password: '123', role: 'user', secQuestion: "What is your favorite color?", secAnswer: "blue" },
+                { username: 'user2', password: '123', role: 'user', secQuestion: "What is the name of your first pet?", secAnswer: "buddy" }
+            ];
+            await setDoc(userRef, { userList: users });
         }
     }
 
-    function handleLoginKeyPress(event) {
-        if (event.key === 'Enter') attemptLogin();
+    async function saveUsersToCloud() {
+        const userRef = doc(db, "system", "auth");
+        await setDoc(userRef, { userList: users }, { merge: true });
     }
 
-    function handleSetupKeyPress(event) {
-        if (event.key === 'Enter') saveSecuritySetup();
+    async function loadUserData() {
+        const docId = `${viewingUsername}_${selectedYear}_${selectedMonth}`;
+        const dataRef = doc(db, "habits", docId);
+        const docSnap = await getDoc(dataRef);
+
+        if (docSnap.exists()) {
+            userHabitData = docSnap.data();
+        } else {
+            userHabitData = { 1: [], 2: [], 3: [], 4: [] };
+        }
+        renderDashboard();
     }
 
-    function saveUsers() {
-        localStorage.setItem('ht_users', JSON.stringify(users));
+    async function saveTrackerState(habitId, day, isChecked) {
+        if (!userHabitData[habitId]) userHabitData[habitId] = [];
+        
+        if (isChecked) {
+            if (!userHabitData[habitId].includes(day)) userHabitData[habitId].push(day);
+        } else {
+            userHabitData[habitId] = userHabitData[habitId].filter(d => d !== day);
+        }
+
+        const docId = `${viewingUsername}_${selectedYear}_${selectedMonth}`;
+        const dataRef = doc(db, "habits", docId);
+        
+        await setDoc(dataRef, userHabitData, { merge: true });
+        calculate(); 
     }
 
-    function checkSession() {
+    // --- SYSTEM OPERATIONS & RUNTIME VALIDATIONS ---
+
+    async function checkSession() {
+        await fetchUsersFromCloud();
         const sessionUser = sessionStorage.getItem('ht_session');
         if (sessionUser) {
             currentUser = users.find(u => u.username === sessionUser);
-            checkUserSecurityStatus();
-        } else {
-            showView('loginView');
+            if(currentUser) {
+                checkUserSecurityStatus();
+                return;
+            }
         }
+        showView('loginView');
     }
 
     function attemptLogin() {
         const u = document.getElementById('usernameInput').value.trim().toLowerCase();
         const p = document.getElementById('passwordInput').value.trim();
-        
-        // Compare both the input and the stored username in lowercase
         const found = users.find(user => user.username.toLowerCase() === u && user.password === p);
 
         if (found) {
@@ -322,7 +120,7 @@
             document.getElementById('loginError').innerText = "Invalid credentials!";
         }
     }
-    
+
     function checkUserSecurityStatus() {
         if (!currentUser.secQuestion) {
             showView('setupSecurityView');
@@ -331,7 +129,7 @@
         }
     }
 
-    function saveSecuritySetup() {
+    async function saveSecuritySetup() {
         const sq = document.getElementById('userSetupQuestion').value;
         const sa = document.getElementById('userSetupAnswer').value.trim();
         
@@ -344,89 +142,9 @@
         const userIndex = users.findIndex(u => u.username === currentUser.username);
         if (userIndex !== -1) {
             users[userIndex] = currentUser;
-            saveUsers();
+            await saveUsersToCloud();
         }
-        
         routeUser();
-    }
-
-    function logout() {
-        currentUser = null;
-        viewingUsername = null;
-        sessionStorage.removeItem('ht_session');
-        document.getElementById('usernameInput').value = '';
-        document.getElementById('passwordInput').value = '';
-        
-        // Reset the password fields to hidden when logging out
-        document.getElementById('passwordInput').type = "password";
-        document.querySelectorAll('.toggle-password').forEach(icon => icon.innerText = "👁️");
-
-        showView('loginView');
-    }
-
-    function changePassword() {
-        const current = prompt("Enter your current password:");
-        if (current === null) return; 
-        
-        if (current !== currentUser.password) {
-            alert("Incorrect current password. Password change failed.");
-            return;
-        }
-
-        const newPass = prompt("Enter your NEW password:");
-        if (newPass === null) return;
-        if (newPass.trim() === "") {
-            alert("Password cannot be empty.");
-            return;
-        }
-
-        const confirmPass = prompt("Confirm your NEW password:");
-        if (confirmPass === null) return;
-        
-        if (newPass !== confirmPass) {
-            alert("Passwords do not match. Please try again.");
-            return;
-        }
-
-        currentUser.password = newPass.trim();
-        const userIndex = users.findIndex(u => u.username === currentUser.username);
-        if (userIndex !== -1) {
-            users[userIndex] = currentUser;
-            saveUsers();
-            alert("Password successfully changed!");
-        }
-    }
-
-    function forgotPassword() {
-        const username = prompt("Enter your username to reset your password:");
-        if (username) {
-            const searchUser = username.trim().toLowerCase();
-            const user = users.find(u => u.username.toLowerCase() === searchUser);
-            
-            if (user) {
-                if (!user.secQuestion) {
-                    alert("This account has not set up a security question yet. Please contact the administrator.");
-                    return;
-                }
-                
-                const answer = prompt(`Security Question: ${user.secQuestion}\n\nEnter your answer:`);
-                
-                if (answer !== null && answer.trim().toLowerCase() === user.secAnswer) {
-                    const newPassword = prompt("Correct Answer! \n\nPlease enter your NEW password:");
-                    if (newPassword && newPassword.trim() !== "") {
-                        user.password = newPassword.trim();
-                        saveUsers();
-                        alert("Your password has been successfully updated. You can now log in.");
-                    } else {
-                        alert("Password reset cancelled (password cannot be empty).");
-                    }
-                } else {
-                    alert("Incorrect security answer! Password reset failed.");
-                }
-            } else {
-                alert("Username not found.");
-            }
-        }
     }
 
     function routeUser() {
@@ -439,29 +157,67 @@
             showView('appView');
             initControls();
             loadUserData();
-            renderDashboard();
         }
     }
 
-    function showView(viewId) {
-        document.getElementById('loginView').style.display = 'none';
-        document.getElementById('setupSecurityView').style.display = 'none';
-        document.getElementById('adminView').style.display = 'none';
-        document.getElementById('appView').style.display = 'none';
-        document.getElementById(viewId).style.display = 'block';
-        
-        document.getElementById('backToAdminBtn').style.display = 'none';
+    function logout() {
+        currentUser = null;
+        viewingUsername = null;
+        sessionStorage.removeItem('ht_session');
+        document.getElementById('usernameInput').value = '';
+        document.getElementById('passwordInput').value = '';
+        document.getElementById('passwordInput').type = "password";
+        document.querySelectorAll('.toggle-password').forEach(icon => icon.innerText = "👁️");
+        showView('loginView');
     }
 
-    // --- ADMIN LOGIC ---
+    async function changePassword() {
+        const current = prompt("Enter your current password:");
+        if (current === null) return; 
+        if (current !== currentUser.password) return alert("Incorrect current password.");
+
+        const newPass = prompt("Enter your NEW password:");
+        if (!newPass || newPass.trim() === "") return alert("Password cannot be empty.");
+
+        const confirmPass = prompt("Confirm your NEW password:");
+        if (newPass !== confirmPass) return alert("Passwords do not match.");
+
+        currentUser.password = newPass.trim();
+        const userIndex = users.findIndex(u => u.username === currentUser.username);
+        if (userIndex !== -1) {
+            users[userIndex] = currentUser;
+            await saveUsersToCloud();
+            alert("Password successfully changed!");
+        }
+    }
+
+    function forgotPassword() {
+        const username = prompt("Enter your username to reset your password:");
+        if (username) {
+            const searchUser = username.trim().toLowerCase();
+            const user = users.find(u => u.username.toLowerCase() === searchUser);
+            if (!user) return alert("Username not found.");
+            if (!user.secQuestion) return alert("Account security missing. Contact administrator.");
+            
+            const answer = prompt(`Security Question: ${user.secQuestion}\n\nEnter your answer:`);
+            if (answer !== null && answer.trim().toLowerCase() === user.secAnswer) {
+                const newPassword = prompt("Correct Answer!\n\nEnter your NEW password:");
+                if (newPassword && newPassword.trim() !== "") {
+                    user.password = newPassword.trim();
+                    saveUsersToCloud().then(() => alert("Password updated successfully!"));
+                }
+            } else {
+                alert("Incorrect security answer!");
+            }
+        }
+    }
+
     function renderUserList() {
         const list = document.getElementById('userList');
         list.innerHTML = '';
         users.forEach(u => {
             if (u.role === 'admin') return;
-            
             const setupStatus = u.secQuestion ? '' : '<span style="color:#d9534f; font-size:11px;">(Security setup pending)</span>';
-            
             list.innerHTML += `
                 <div class="user-item">
                     <span><strong>${u.username}</strong> (Pass: ${u.password}) ${setupStatus}</span>
@@ -470,258 +226,11 @@
                         <button class="btn-info" style="margin-top:0; color:white; margin-left:5px;" onclick="adminResetUserPassword('${u.username}')">Reset Pass</button>
                         <button class="btn-danger" style="margin-top:0;" onclick="deleteUser('${u.username}')">Delete</button>
                     </div>
-                </div>
-            `;
+                </div>`;
         });
     }
 
-    function adminResetUserPassword(targetUsername) {
-        const newPass = prompt(`Admin Override: Enter a new password for user '${targetUsername}':`);
-        if (newPass && newPass.trim() !== "") {
-            const user = users.find(u => u.username === targetUsername);
-            if (user) {
-                user.password = newPass.trim();
-                saveUsers();
-                renderUserList();
-                alert(`Password for ${targetUsername} has been successfully updated.`);
-            }
-        }
-    }
-
-    function createUser() {
-        // Automatically convert the new username to lowercase for storage
-        const u = document.getElementById('newUsername').value.trim().toLowerCase();
-        const p = document.getElementById('newPassword').value.trim();
-        
-        if(!u || !p) return alert("Enter username and password");
-        
-        // Case-insensitive duplicate check
-        if(users.find(x => x.username.toLowerCase() === u)) return alert("User already exists!");
-        
-        users.push({ 
-            username: u, 
-            password: p, 
-            role: 'user',
-            secQuestion: null,
-            secAnswer: null
-        });
-        
-        saveUsers();
-        
-        document.getElementById('newUsername').value = '';
-        document.getElementById('newPassword').value = '';
-        document.getElementById('newPassword').type = "password";
-        document.querySelectorAll('#adminView .toggle-password').forEach(icon => icon.innerText = "👁️");
-        
-        renderUserList();
-        initAdminControls();
-    }
-
-    function deleteUser(username) {
-        if(confirm(`Are you sure you want to delete ${username}? Their data will remain in storage but they cannot log in.`)) {
-            users = users.filter(u => u.username !== username);
-            saveUsers();
-            renderUserList();
-            initAdminControls(); 
-        }
-    }
-
-    function viewUserDash(targetUsername) {
-        viewingUsername = targetUsername;
-        showView('appView');
-        document.getElementById('backToAdminBtn').style.display = 'inline-block';
-        initControls();
-        loadUserData();
-        renderDashboard();
-    }
-
-    // --- REPORT DOWNLOADER LOGIC ---
-    function initAdminControls() {
-        const dlUserSelect = document.getElementById('dlUserSelect');
-        const dlMonthSelect = document.getElementById('dlMonthSelect');
-        const dlYearSelect = document.getElementById('dlYearSelect');
-        
-        dlUserSelect.innerHTML = '<option value="all">-- All Users --</option>';
-        users.filter(u => u.role === 'user').forEach(u => {
-            let opt = document.createElement('option'); 
-            opt.value = u.username; opt.innerText = u.username;
-            dlUserSelect.appendChild(opt);
-        });
-
-        dlMonthSelect.innerHTML = ''; 
-        monthNames.forEach((m, index) => {
-            let opt = document.createElement('option'); 
-            opt.value = index; opt.innerText = m;
-            dlMonthSelect.appendChild(opt);
-        });
-
-        dlYearSelect.innerHTML = '';
-        for (let y = 2024; y <= 2030; y++) {
-            let opt = document.createElement('option'); 
-            opt.value = y; opt.innerText = y;
-            dlYearSelect.appendChild(opt);
-        }
-
-        dlMonthSelect.value = selectedMonth;
-        dlYearSelect.value = selectedYear;
-
-        const localDate = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-        document.getElementById('dlToDate').value = localDate;
-        
-        let weekAgo = new Date(today);
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        const fromLocalDate = new Date(weekAgo.getTime() - (weekAgo.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-        document.getElementById('dlFromDate').value = fromLocalDate;
-    }
-
-    function downloadMonthlyReport() {
-        const u = document.getElementById('dlUserSelect').value;
-        const m = parseInt(document.getElementById('dlMonthSelect').value);
-        const y = parseInt(document.getElementById('dlYearSelect').value);
-
-        let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "Username,Month,Year,Habit Name,Total Monthly Goal,Days Completed,Progress %\n";
-
-        const daysInReqMonth = new Date(y, m + 1, 0).getDate();
-        let workingDaysInReqMonth = 0;
-        for(let d = 1; d <= daysInReqMonth; d++) {
-            if(new Date(y, m, d).getDay() !== 6) workingDaysInReqMonth++;
-        }
-
-        const usersToDownload = u === 'all' ? users.filter(x => x.role === 'user') : [users.find(x => x.username === u)];
-
-        usersToDownload.forEach(userObj => {
-            if(!userObj) return;
-            const storageKey = `ht_data_${userObj.username}_${y}_${m}`;
-            const savedData = JSON.parse(localStorage.getItem(storageKey)) || {};
-
-            habits.forEach(habit => {
-                const checkedDaysArray = savedData[habit.id] || [];
-                const validCheckedDays = checkedDaysArray.filter(day => new Date(y, m, day).getDay() !== 6).length;
-                const monthlyGoal = habit.dailyTarget * workingDaysInReqMonth;
-                const percentage = workingDaysInReqMonth > 0 ? ((validCheckedDays / workingDaysInReqMonth) * 100).toFixed(2) : 0;
-
-                csvContent += `${userObj.username},${monthNames[m]},${y},"${habit.name}",${monthlyGoal},${validCheckedDays},${percentage}%\n`;
-            });
-        });
-
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        const filenameLabel = u === 'all' ? 'All_Users' : u;
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `MonthlyReport_${filenameLabel}_${monthNames[m]}_${y}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-
-    function downloadDateRangeReport() {
-        const u = document.getElementById('dlUserSelect').value;
-        const fromDateVal = document.getElementById('dlFromDate').value;
-        const toDateVal = document.getElementById('dlToDate').value;
-        
-        if (!fromDateVal || !toDateVal) {
-            alert("Please select both a From Date and a To Date.");
-            return;
-        }
-
-        const fParts = fromDateVal.split('-');
-        const tParts = toDateVal.split('-');
-        const startDate = new Date(fParts[0], fParts[1] - 1, fParts[2]);
-        const endDate = new Date(tParts[0], tParts[1] - 1, tParts[2]);
-
-        if (startDate > endDate) {
-            alert("The 'From Date' cannot be later than the 'To Date'.");
-            return;
-        }
-
-        let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "Username,Date,Habit Name,Status\n";
-
-        const usersToDownload = u === 'all' ? users.filter(x => x.role === 'user') : [users.find(x => x.username === u)];
-
-        usersToDownload.forEach(userObj => {
-            if(!userObj) return;
-
-            let currentDate = new Date(startDate.getTime());
-            
-            while(currentDate <= endDate) {
-                let y = currentDate.getFullYear();
-                let m = currentDate.getMonth();
-                let d = currentDate.getDate();
-                let dayOfWeek = currentDate.getDay();
-                
-                let dateString = `${y}-${String(m+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-
-                const storageKey = `ht_data_${userObj.username}_${y}_${m}`;
-                const savedData = JSON.parse(localStorage.getItem(storageKey)) || {};
-
-                habits.forEach(habit => {
-                    let statusText = "";
-                    if (dayOfWeek === 6) {
-                        statusText = "OFF (Saturday)";
-                    } else {
-                        const checkedDaysArray = savedData[habit.id] || [];
-                        const isCompleted = checkedDaysArray.includes(d);
-                        statusText = isCompleted ? "Completed" : "Incomplete";
-                    }
-                    csvContent += `${userObj.username},${dateString},"${habit.name}",${statusText}\n`;
-                });
-
-                currentDate.setDate(currentDate.getDate() + 1);
-            }
-        });
-
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        const filenameLabel = u === 'all' ? 'All_Users' : u;
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `DateRangeReport_${filenameLabel}_${fromDateVal}_to_${toDateVal}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-
-    // --- TRACKER LOGIC ---
-    const habits = [
-        { id: 1, name: "Daily 50 New Connection", dailyTarget: 50 },
-        { id: 2, name: "Find 20 New Company", dailyTarget: 20 },
-        { id: 3, name: "Daily 50 Email & Followup", dailyTarget: 50 },
-        { id: 4, name: "Daily Data Update", dailyTarget: 1 }
-    ];
-
-    let userHabitData = {}; 
-
-    function loadUserData() {
-        const storageKey = `ht_data_${viewingUsername}_${selectedYear}_${selectedMonth}`;
-        const saved = localStorage.getItem(storageKey);
-        
-        if (saved) {
-            userHabitData = JSON.parse(saved);
-        } else {
-            userHabitData = { 1: [], 2: [], 3: [], 4: [] };
-        }
-    }
-
-    function saveTrackerState(habitId, day, isChecked) {
-        if (!userHabitData[habitId]) userHabitData[habitId] = [];
-        
-        if (isChecked) {
-            if (!userHabitData[habitId].includes(day)) userHabitData[habitId].push(day);
-        } else {
-            userHabitData[habitId] = userHabitData[habitId].filter(d => d !== day);
-        }
-
-        const storageKey = `ht_data_${viewingUsername}_${selectedYear}_${selectedMonth}`;
-        localStorage.setItem(storageKey, JSON.stringify(userHabitData));
-        
-        calculate(); 
-    }
-
-    const baseColors = ['#b45f06', '#0b5394', '#990000', '#38761d', '#741b47'];
-    let chartInstances = {};
-    let currentWeeks = [];
-    let daysInMonth = 31;
+    // --- DOM CONTROLS & RENDER CALCULATIONS ---
 
     function isSaturday(day) {
         return new Date(selectedYear, selectedMonth, day).getDay() === 6;
@@ -732,20 +241,17 @@
         const mSelect = document.getElementById('monthSelect');
         const ySelect = document.getElementById('yearSelect');
         
-        uSelect.innerHTML = '';
-        mSelect.innerHTML = ''; 
-        ySelect.innerHTML = '';
+        uSelect.innerHTML = ''; mSelect.innerHTML = ''; ySelect.innerHTML = '';
 
         users.filter(u => u.role === 'user').forEach(u => {
             let opt = document.createElement('option'); 
-            opt.value = u.username; 
-            opt.innerText = u.username.toUpperCase() + "'s Tracker";
+            opt.value = u.username; opt.innerText = u.username.toUpperCase() + "'s Tracker";
             uSelect.appendChild(opt);
         });
         uSelect.value = viewingUsername;
 
-        monthNames.forEach((m, index) => {
-            let opt = document.createElement('option'); opt.value = index; opt.innerText = m;
+        monthNames.forEach((m, idx) => {
+            let opt = document.createElement('option'); opt.value = idx; opt.innerText = m;
             mSelect.appendChild(opt);
         });
         for (let y = 2024; y <= 2030; y++) {
@@ -753,42 +259,22 @@
             ySelect.appendChild(opt);
         }
 
-        mSelect.value = selectedMonth;
-        ySelect.value = selectedYear;
+        mSelect.value = selectedMonth; ySelect.value = selectedYear;
 
-        uSelect.onchange = (e) => {
-            viewingUsername = e.target.value;
-            loadUserData();
-            renderDashboard();
-        };
-
-        mSelect.onchange = (e) => { 
-            selectedMonth = parseInt(e.target.value); 
-            loadUserData(); 
-            renderDashboard(); 
-        };
-
-        ySelect.onchange = (e) => { 
-            selectedYear = parseInt(e.target.value); 
-            loadUserData(); 
-            renderDashboard(); 
-        };
+        uSelect.onchange = (e) => { viewingUsername = e.target.value; loadUserData(); };
+        mSelect.onchange = (e) => { selectedMonth = parseInt(e.target.value); loadUserData(); };
+        ySelect.onchange = (e) => { selectedYear = parseInt(e.target.value); loadUserData(); };
     }
 
     function calculateDynamicWeeks() {
         daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
         currentWeeks = [];
         let startDay = 1;
-        
         for (let i = 0; i < 5; i++) {
             if (startDay > daysInMonth) break; 
             let endDay = Math.min(startDay + 6, daysInMonth);
-            
             let workingDays = 0;
-            for(let d = startDay; d <= endDay; d++) {
-                if (!isSaturday(d)) workingDays++;
-            }
-
+            for(let d = startDay; d <= endDay; d++) { if (!isSaturday(d)) workingDays++; }
             currentWeeks.push({ name: 'Week ' + (i + 1), span: endDay - startDay + 1, workingDays: workingDays, bgClass: `w${i+1}-bg`, textClass: `w${i+1}-text`, cbClass: `cb-w${i+1}`, color: baseColors[i] });
             startDay = endDay + 1;
         }
@@ -797,10 +283,8 @@
     function renderDashboard() {
         document.getElementById('mainHeader').innerText = `${viewingUsername.toUpperCase()}'s Tracker - ${monthNames[selectedMonth]} ${selectedYear}`;
         calculateDynamicWeeks();
-        
         Object.values(chartInstances).forEach(chart => chart.destroy());
         chartInstances = {};
-
         renderHeaders();
         renderBody();
         renderSummary();
@@ -813,13 +297,12 @@
         let weekRow = `<tr id="weekHeaderRow"><th rowspan="3" class="habit-name">Habits<br>Dates<br>Days</th>`;
         let datesRow = `<tr id="datesHeaderRow">`;
         let daysRow = `<tr id="daysHeaderRow">`;
-
         let currentDay = 1;
+
         currentWeeks.forEach(week => {
             weekRow += `<th colspan="${week.span}" class="${week.textClass}">${week.name}</th>`;
             for (let i = 0; i < week.span; i++) {
-                let dateObj = new Date(selectedYear, selectedMonth, currentDay);
-                let dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+                let dayName = new Date(selectedYear, selectedMonth, currentDay).toLocaleDateString('en-US', { weekday: 'short' });
                 let offClass = isSaturday(currentDay) ? 'off-day' : '';
                 datesRow += `<th class="col-day ${week.bgClass} ${offClass}">${currentDay}</th>`;
                 daysRow += `<th class="col-day day-text ${week.bgClass} ${offClass}">${dayName}</th>`;
@@ -827,20 +310,17 @@
             }
         });
         weekRow += `<th rowspan="3" class="col-goal" style="background:white;">Monthly Goal</th><th rowspan="3" class="col-progress">Monthly Progress</th></tr>`;
-        datesRow += `</tr>`; daysRow += `</tr>`;
-        thead.innerHTML = weekRow + datesRow + daysRow;
+        thead.innerHTML = weekRow + datesRow + "</tr>" + daysRow + "</tr>";
     }
 
     function renderBody() {
         const tbody = document.getElementById('trackerBody');
         tbody.innerHTML = '';
-
         const isReadonly = (currentUser.role !== 'admin' && currentUser.username !== viewingUsername) ? 'disabled' : '';
 
         habits.forEach(habit => {
             let tr = `<tr><td class="habit-name">${habit.name}</td>`;
             let dayCount = 1;
-            
             currentWeeks.forEach(week => {
                 for (let i = 0; i < week.span; i++) {
                     if (isSaturday(dayCount)) {
@@ -854,37 +334,26 @@
                     dayCount++;
                 }
             });
-
-            tr += `<td class="col-goal" id="goal-val-${habit.id}">0</td>
-                   <td>
-                       <div class="progress-bar-container">
-                           <div class="progress-bar" id="prog-${habit.id}"></div>
-                           <span class="progress-text" id="prog-text-${habit.id}">0%</span>
-                       </div>
-                   </td></tr>`;
+            tr += `<td class="col-goal" id="goal-val-${habit.id}">0</td><td><div class="progress-bar-container"><div class="progress-bar" id="prog-${habit.id}"></div><span class="progress-text" id="prog-text-${habit.id}">0%</span></div></td></tr>`;
             tbody.innerHTML += tr;
         });
     }
 
     function renderSummary() {
         const summary = document.getElementById('summaryBody');
-        summary.innerHTML = '';
-        summary.innerHTML += `<tr><td class="summary-label" style="border:none;"></td><td colspan="${daysInMonth}" style="border:none;"></td><th style="font-weight:bold;">Total</th><td style="border:none;"></td></tr>`;
+        summary.innerHTML = `<tr><td class="summary-label" style="border:none;"></td><td colspan="${daysInMonth}" style="border:none;"></td><th style="font-weight:bold;">Total</th><td style="border:none;"></td></tr>`;
 
         let rComp = `<tr><td class="summary-label">Habits Completed</td>`;
         for(let i=1; i<=daysInMonth; i++) { rComp += `<td id="d-comp-${i}" class="${isSaturday(i) ? 'off-day' : ''}">-</td>`; }
-        rComp += `<td id="grand-comp" class="col-goal">0</td><td style="border:none;"></td></tr>`;
-        summary.innerHTML += rComp;
+        summary.innerHTML += rComp + `<td id="grand-comp" class="col-goal">0</td><td style="border:none;"></td></tr>`;
 
         let rInc = `<tr><td class="summary-label">Habits Incomplete</td>`;
         for(let i=1; i<=daysInMonth; i++) { rInc += `<td id="d-inc-${i}" class="${isSaturday(i) ? 'off-day' : ''}">-</td>`; }
-        rInc += `<td id="grand-inc" class="col-goal">0</td><th style="font-weight:bold; border-bottom:none;">Total Monthly Progress</th></tr>`;
-        summary.innerHTML += rInc;
+        summary.innerHTML += rInc + `<td id="grand-inc" class="col-goal">0</td><th style="font-weight:bold; border-bottom:none;">Total Monthly Progress</th></tr>`;
 
         let rWComp = `<tr><td class="summary-label">Weekly Habits Completed</td>`;
         currentWeeks.forEach(w => rWComp += `<td colspan="${w.span}" id="w-comp-${w.name.replace(' ', '')}">0</td>`);
-        rWComp += `<td colspan="2" rowspan="4" style="vertical-align:top;"><div class="big-chart-container"><canvas id="chart-Total"></canvas><span class="total-percent-overlay" id="total-percent-text">0%</span></div></td></tr>`;
-        summary.innerHTML += rWComp;
+        summary.innerHTML += rWComp + `<td colspan="2" rowspan="4" style="vertical-align:top;"><div class="big-chart-container"><canvas id="chart-Total"></canvas><span class="total-percent-overlay" id="total-percent-text">0%</span></div></td></tr>`;
 
         let rWInc = `<tr><td class="summary-label">Weekly Habits Incomplete</td>`;
         currentWeeks.forEach(w => rWInc += `<td colspan="${w.span}" id="w-inc-${w.name.replace(' ', '')}">0</td>`);
@@ -901,10 +370,9 @@
 
     function initCharts() {
         const createDonut = (id, color, cutout) => {
-            const ctx = document.getElementById(id).getContext('2d');
-            return new Chart(ctx, { type: 'doughnut', data: { labels: ['Completed', 'Incomplete'], datasets: [{ data: [0, 1], backgroundColor: [color, '#e0e0e0'], borderWidth: 0 }] }, options: { cutout: cutout, plugins: { legend: { display: false }, tooltip: { enabled: false } }, maintainAspectRatio: false } });
+            return new Chart(document.getElementById(id).getContext('2d'), { type: 'doughnut', data: { labels: ['Completed', 'Incomplete'], datasets: [{ data: [0, 1], backgroundColor: [color, '#e0e0e0'], borderWidth: 0 }] }, options: { cutout: cutout, plugins: { legend: { display: false }, tooltip: { enabled: false } }, maintainAspectRatio: false } });
         };
-        currentWeeks.forEach(week => { chartInstances[week.name.replace(' ', '')] = createDonut(`chart-${week.name.replace(' ', '')}`, week.color, '65%'); });
+        currentWeeks.forEach(w => { chartInstances[w.name.replace(' ', '')] = createDonut(`chart-${w.name.replace(' ', '')}`, w.color, '65%'); });
         chartInstances['Total'] = createDonut('chart-Total', '#4caf50', '70%');
         chartInstances['Total'].data.datasets[0].backgroundColor = ['#4caf50', '#f44336'];
     }
@@ -917,16 +385,14 @@
         let workingDaysInMonth = currentWeeks.reduce((sum, w) => sum + w.workingDays, 0);
         const grandTotalPossible = workingDaysInMonth * totalHabits;
 
-        for (let day = 1; day <= daysInMonth; day++) {
-            if (isSaturday(day)) {
-                document.getElementById(`d-comp-${day}`).innerText = "OFF"; document.getElementById(`d-inc-${day}`).innerText = "OFF"; continue;
-            }
+        for (let d = 1; d <= daysInMonth; d++) {
+            if (isSaturday(d)) continue;
             let completedToday = 0;
-            document.querySelectorAll(`input[data-day="${day}"]`).forEach(cb => {
+            document.querySelectorAll(`input[data-day="${d}"]`).forEach(cb => {
                 if (cb.checked) { completedToday++; weeklyStats[cb.getAttribute('data-week')].completed++; grandTotalCompleted++; }
             });
-            document.getElementById(`d-comp-${day}`).innerText = completedToday;
-            document.getElementById(`d-inc-${day}`).innerText = totalHabits - completedToday;
+            document.getElementById(`d-comp-${d}`).innerText = completedToday;
+            document.getElementById(`d-inc-${d}`).innerText = totalHabits - completedToday;
         }
 
         currentWeeks.forEach(week => {
@@ -953,8 +419,192 @@
         });
     }
 
+    // --- REPORT DOWNLOAD ENGINE ---
+
+    function initAdminControls() {
+        const dlUserSelect = document.getElementById('dlUserSelect');
+        dlUserSelect.innerHTML = '<option value="all">-- All Users --</option>';
+        users.filter(u => u.role === 'user').forEach(u => {
+            let opt = document.createElement('option'); opt.value = u.username; opt.innerText = u.username;
+            dlUserSelect.appendChild(opt);
+        });
+        document.getElementById('dlMonthSelect').innerHTML = ''; 
+        monthNames.forEach((m, idx) => {
+            let opt = document.createElement('option'); opt.value = idx; opt.innerText = m;
+            document.getElementById('dlMonthSelect').appendChild(opt);
+        });
+        document.getElementById('dlYearSelect').innerHTML = '';
+        for (let y = 2024; y <= 2030; y++) {
+            let opt = document.createElement('option'); opt.value = y; opt.innerText = y;
+            document.getElementById('dlYearSelect').appendChild(opt);
+        }
+        document.getElementById('dlMonthSelect').value = selectedMonth;
+        document.getElementById('dlYearSelect').value = selectedYear;
+        document.getElementById('dlToDate').value = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        let weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
+        document.getElementById('dlFromDate').value = new Date(weekAgo.getTime() - (weekAgo.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    }
+
+    window.downloadMonthlyReport = () => {
+        const u = document.getElementById('dlUserSelect').value;
+        const m = parseInt(document.getElementById('dlMonthSelect').value);
+        const y = parseInt(document.getElementById('dlYearSelect').value);
+        let csvContent = "data:text/csv;charset=utf-8,Username,Month,Year,Habit Name,Total Monthly Goal,Days Completed,Progress %\n";
+        const daysInReqMonth = new Date(y, m + 1, 0).getDate();
+        let workingDaysInReqMonth = 0;
+        for(let d = 1; d <= daysInReqMonth; d++) { if(new Date(y, m, d).getDay() !== 6) workingDaysInReqMonth++; }
+        const usersToDownload = u === 'all' ? users.filter(x => x.role === 'user') : [users.find(x => x.username === u)];
+
+        let fetchPromises = usersToDownload.map(async (userObj) => {
+            if(!userObj) return;
+            const storageKey = `${userObj.username}_${y}_${m}`;
+            const docSnap = await getDoc(doc(db, "habits", storageKey));
+            const savedData = docSnap.exists() ? docSnap.data() : {};
+            habits.forEach(habit => {
+                const checkedDaysArray = savedData[habit.id] || [];
+                const validCheckedDays = checkedDaysArray.filter(day => new Date(y, m, day).getDay() !== 6).length;
+                const monthlyGoal = habit.dailyTarget * workingDaysInReqMonth;
+                const percentage = workingDaysInReqMonth > 0 ? ((validCheckedDays / workingDaysInReqMonth) * 100).toFixed(2) : 0;
+                csvContent += `${userObj.username},${monthNames[m]},${y},"${habit.name}",${monthlyGoal},${validCheckedDays},${percentage}%\n`;
+            });
+        });
+
+        Promise.all(fetchPromises).then(() => {
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", `MonthlyReport_${u === 'all' ? 'All' : u}_${monthNames[m]}_${y}.csv`);
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        });
+    };
+
+    window.downloadDateRangeReport = () => {
+        const u = document.getElementById('dlUserSelect').value;
+        const fromDateVal = document.getElementById('dlFromDate').value;
+        const toDateVal = document.getElementById('dlToDate').value;
+        if (!fromDateVal || !toDateVal) return alert("Select both From and To dates.");
+        const fParts = fromDateVal.split('-'); const tParts = toDateVal.split('-');
+        const startDate = new Date(fParts[0], fParts[1] - 1, fParts[2]);
+        const endDate = new Date(tParts[0], tParts[1] - 1, tParts[2]);
+        if (startDate > endDate) return alert("From Date cannot be after To Date.");
+
+        let csvContent = "data:text/csv;charset=utf-8,Username,Date,Habit Name,Status\n";
+        const usersToDownload = u === 'all' ? users.filter(x => x.role === 'user') : [users.find(x => x.username === u)];
+
+        // Group fetches by unique month documents required
+        let monthKeys = [];
+        let cur = new Date(startDate.getTime());
+        while(cur <= endDate) {
+            let k = `${cur.getFullYear()}_${cur.getMonth()}`;
+            if(!monthKeys.includes(k)) monthKeys.push(k);
+            cur.setDate(cur.getDate() + 1);
+        }
+
+        let fetchPromises = [];
+        let pulledData = {};
+        usersToDownload.forEach(userObj => {
+            if(!userObj) return;
+            monthKeys.forEach(key => {
+                const p = getDoc(doc(db, "habits", `${userObj.username}_${key}`)).then(snap => {
+                    if(!pulledData[userObj.username]) pulledData[userObj.username] = {};
+                    pulledData[userObj.username][key] = snap.exists() ? snap.data() : {};
+                });
+                fetchPromises.push(p);
+            });
+        });
+
+        Promise.all(fetchPromises).then(() => {
+            usersToDownload.forEach(userObj => {
+                if(!userObj) return;
+                let currentDate = new Date(startDate.getTime());
+                while(currentDate <= endDate) {
+                    let y = currentDate.getFullYear(); let m = currentDate.getMonth(); let d = currentDate.getDate();
+                    let dateString = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                    const savedData = (pulledData[userObj.username] && pulledData[userObj.username][`${y}_${m}`]) || {};
+                    habits.forEach(habit => {
+                        let statusText = currentDate.getDay() === 6 ? "OFF (Saturday)" : ((savedData[habit.id] || []).includes(d) ? "Completed" : "Incomplete");
+                        csvContent += `${userObj.username},${dateString},"${habit.name}",${statusText}\n`;
+                    });
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+            });
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", `DateRange_${u === 'all' ? 'All' : u}_${fromDateVal}_to_${toDateVal}.csv`);
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        });
+    };
+
+    // --- HTML INTERFACE ATTACHMENTS (EXPORTS) ---
+    window.attemptLogin = attemptLogin;
+    window.saveSecuritySetup = saveSecuritySetup;
+    window.saveTrackerState = saveTrackerState;
+    window.loadUserData = loadUserData;
+    window.logout = logout;
+    window.changePassword = changePassword;
+    window.forgotPassword = forgotPassword;
+    window.handleLoginKeyPress = (e) => { if (e.key === 'Enter') attemptLogin(); };
+    window.handleSetupKeyPress = (e) => { if (e.key === 'Enter') saveSecuritySetup(); };
+    
+    window.togglePasswordVisibility = (inputId, iconElement) => {
+        const input = document.getElementById(inputId);
+        if (input.type === "password") { input.type = "text"; iconElement.innerText = "🙈"; }
+        else { input.type = "password"; iconElement.innerText = "👁️"; }
+    };
+
+    window.createUser = async () => {
+        const u = document.getElementById('newUsername').value.trim().toLowerCase();
+        const p = document.getElementById('newPassword').value.trim();
+        if(!u || !p) return alert("Enter credentials");
+        if(users.find(x => x.username.toLowerCase() === u)) return alert("User exists!");
+        
+        users.push({ username: u, password: p, role: 'user', secQuestion: null, secAnswer: null });
+        await saveUsersToCloud();
+        document.getElementById('newUsername').value = '';
+        document.getElementById('newPassword').value = '';
+        renderUserList();
+        initAdminControls();
+    };
+
+    window.adminResetUserPassword = async (targetUsername) => {
+        const newPass = prompt(`Admin Override: Enter a new password for '${targetUsername}':`);
+        if (newPass && newPass.trim() !== "") {
+            const user = users.find(u => u.username === targetUsername);
+            if (user) {
+                user.password = newPass.trim();
+                await saveUsersToCloud();
+                renderUserList();
+                alert(`Password updated.`);
+            }
+        }
+    };
+
+    window.deleteUser = async (username) => {
+        if(confirm(`Delete ${username}?`)) {
+            users = users.filter(u => u.username !== username);
+            await saveUsersToCloud();
+            renderUserList();
+            initAdminControls(); 
+        }
+    };
+
+    window.viewUserDash = (targetUsername) => {
+        viewingUsername = targetUsername;
+        showView('appView');
+        document.getElementById('backToAdminBtn').style.display = 'inline-block';
+        initControls();
+        loadUserData();
+    };
+
+    window.routeUser = routeUser;
+
+    function showView(viewId) {
+        document.getElementById('loginView').style.display = 'none';
+        document.getElementById('setupSecurityView').style.display = 'none';
+        document.getElementById('adminView').style.display = 'none';
+        document.getElementById('appView').style.display = 'none';
+        document.getElementById(viewId).style.display = 'block';
+        if(viewId !== 'appView') document.getElementById('backToAdminBtn').style.display = 'none';
+    }
+
     window.onload = checkSession;
 </script>
-
-</body>
-</html>
