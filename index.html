@@ -844,7 +844,10 @@
         if(viewId !== 'appView') document.getElementById('backToAdminBtn').style.display = 'none';
     }
 
-    window.onload = checkSession;
+    // Direct DOM event binding ensures setup runs smoothly inside asynchronous ES module files
+    document.addEventListener('DOMContentLoaded', () => {
+        checkSession();
+    });
 </script>
 
 </body>
