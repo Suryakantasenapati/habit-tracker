@@ -302,7 +302,6 @@
     let currentWeeks = [];
     let daysInMonth = 31;
 
-    // --- CLOUD STATE ENGINE SYSTEM PERSISTENCE ---
     async function fetchSystemDataFromCloud() {
         const globalRef = doc(db, "system", "auth");
         const docSnap = await getDoc(globalRef);
@@ -528,7 +527,7 @@
                         <br><span style="font-size:12px; color:#555;">Daily Value Target: <strong>${h.dailyTarget}</strong></span>
                     </div>
                     <div class="item-actions">
-                        <button class="btn-info" style="margin-top:0;" onclick="updateHabitTarget(${h.id})">Modify Target</button>
+                        <button class="btn-info" style="margin-top:0;" onclick="updateHabitTarget(${h.id})">Modify Habit</button>
                         <button class="btn-danger" style="margin-top:0;" onclick="deleteHabit(${h.id})">Remove</button>
                     </div>
                 </div>`;
@@ -555,26 +554,28 @@
         alert("New Tracking Habit successfully instantiated system-wide.");
     };
 
-    // --- AUTOMATIC HEADING TEXT SYNC INJECTION ENGINE ---
+    // --- MANUAL CONFIGURATION OVERRIDE ENGINE ---
     window.updateHabitTarget = async (id) => {
         const habit = habits.find(h => h.id === id);
         if(!habit) return;
         
-        const newTarget = prompt(`Modify target threshold window limit value for "${habit.name}":`, habit.dailyTarget);
+        // 1. Update the display title name text heading directly
+        const newName = prompt(`Modify Text Heading Name for this habit:`, habit.name);
+        if(newName === null || newName.trim() === "") return alert("Habit heading string cannot be empty.");
+
+        // 2. Update the numerical configuration value
+        const newTarget = prompt(`Modify numerical Daily Target value for "${newName.trim()}":`, habit.dailyTarget);
         if(newTarget === null) return;
         
         const parsed = parseInt(newTarget);
-        if(isNaN(parsed) || parsed <= 0) return alert("Target assignment parameter payload structure error.");
+        if(isNaN(parsed) || parsed <= 0) return alert("Target assignment parameter payload error.");
 
-        // Automatically replace the old integer inside the text title string if it exists
-        const oldTargetString = String(habit.dailyTarget);
-        if (habit.name.includes(oldTargetString)) {
-            habit.name = habit.name.replace(oldTargetString, String(parsed));
-        }
-
+        habit.name = newName.trim();
         habit.dailyTarget = parsed;
+        
         await saveSystemDataToCloud();
         renderAdminHabitList();
+        alert("Habits updated successfully system-wide!");
     };
 
     window.deleteHabit = async (id) => {
@@ -592,6 +593,7 @@
         return new Date(selectedYear, selectedMonth, day).getDay() === 6;
     }
 
+    // Controls initialization utility logic code
     function initControls() {
         const uSelect = document.getElementById('userSelect');
         const mSelect = document.getElementById('monthSelect');
